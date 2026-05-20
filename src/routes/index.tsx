@@ -1,31 +1,16 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
 import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
-  Users, AlertTriangle, Clock, Cctv, TrendingUp, ShieldAlert,
+  Users, AlertTriangle, Clock, Cctv, IdCard, HardHat, ArrowRight, ShieldCheck,
 } from "lucide-react";
-import {
-  ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip,
-  CartesianGrid, BarChart, Bar, LineChart, Line,
-} from "recharts";
-import {
-  ocorrenciasPorDia, setoresAlertas, usoCorreto, ocorrencias, cameras, epis,
-} from "@/lib/mock-data";
+import { useStore } from "@/lib/store";
+import { statusFromValidade } from "@/lib/mock-data";
 
 export const Route = createFileRoute("/")({ component: Dashboard });
-
-const tooltipStyle = {
-  contentStyle: {
-    backgroundColor: "#1E293B",
-    border: "1px solid rgba(255,255,255,0.1)",
-    borderRadius: 8,
-    color: "#F8FAFC",
-    fontSize: 12,
-  },
-  labelStyle: { color: "#94A3B8" },
-};
 
 function Stat({ icon: Icon, label, value, trend, tone = "primary" }: {
   icon: React.ComponentType<{ className?: string }>;
@@ -54,11 +39,46 @@ function Stat({ icon: Icon, label, value, trend, tone = "primary" }: {
   );
 }
 
+function SetupCard({ icon: Icon, title, desc, to, done }: {
+  icon: React.ComponentType<{ className?: string }>;
+  title: string; desc: string; to: string; done: boolean;
+}) {
+  return (
+    <Link to={to} className="block">
+      <Card className="p-5 bg-card border-border hover:border-primary/40 transition-colors h-full">
+        <div className="flex items-start gap-3">
+          <div className={`w-10 h-10 rounded-lg flex items-center justify-center ring-1 ${done ? "bg-success/15 text-success ring-success/30" : "bg-primary/15 text-primary ring-primary/30"}`}>
+            <Icon className="w-5 h-5" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <p className="font-medium">{title}</p>
+              {done && <Badge className="bg-success/15 text-success border-success/30 hover:bg-success/15">OK</Badge>}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">{desc}</p>
+          </div>
+          <ArrowRight className="w-4 h-4 text-muted-foreground" />
+        </div>
+      </Card>
+    </Link>
+  );
+}
+
 function Dashboard() {
-  const ativos = 47;
+  const funcionarios = useStore("funcionarios");
+  const epis = useStore("epis");
+  const ocorrencias = useStore("ocorrencias");
+  const cameras = useStore("cameras");
+  const usuarios = useStore("usuarios");
+
   const ocorrenciasHoje = ocorrencias.filter(o => Date.now() - new Date(o.data).getTime() < 86400000).length;
-  const episVencer = epis.filter(e => e.status === "proximo" || e.status === "vencido").length;
+  const episVencer = epis.filter(e => {
+    const s = statusFromValidade(e.validade);
+    return s === "proximo" || s === "vencido";
+  }).length;
   const onlineCams = cameras.filter(c => c.status === "online").length;
+
+  const empty = funcionarios.length === 0 && epis.length === 0 && cameras.length === 0;
 
   return (
     <AppShell>
@@ -66,86 +86,54 @@ function Dashboard() {
         title="Dashboard Operacional"
         description="Visão em tempo real da fiscalização de EPI por IA YOLOv4"
       >
-        <Badge className="bg-success/15 text-success border-success/30 hover:bg-success/15">
-          <span className="w-1.5 h-1.5 rounded-full bg-success mr-2 live-dot" />
-          Ao vivo
+        <Badge className={cameras.some(c => c.status === "online")
+          ? "bg-success/15 text-success border-success/30 hover:bg-success/15"
+          : "bg-muted text-muted-foreground border-border"}>
+          <span className={`w-1.5 h-1.5 rounded-full mr-2 ${cameras.some(c => c.status === "online") ? "bg-success live-dot" : "bg-muted-foreground"}`} />
+          {cameras.some(c => c.status === "online") ? "Ao vivo" : "Aguardando"}
         </Badge>
       </PageHeader>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Stat icon={Users} label="Trabalhadores na área" value={ativos} trend="+3 últimas 10 min" tone="primary" />
-        <Stat icon={AlertTriangle} label="Ocorrências hoje" value={ocorrenciasHoje} trend="2 críticas" tone="destructive" />
-        <Stat icon={Clock} label="EPIs próximos do vencimento" value={episVencer} trend="Ação requerida" tone="warning" />
-        <Stat icon={Cctv} label="Câmeras online" value={`${onlineCams}/${cameras.length}`} trend="1 offline" tone="success" />
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">
-        <Card className="lg:col-span-2 p-5 bg-card border-border">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <p className="font-medium">Ocorrências por dia</p>
-              <p className="text-xs text-muted-foreground">Últimos 7 dias</p>
+      {empty && (
+        <Card className="p-6 bg-gradient-to-br from-primary/10 via-card to-card border-primary/30 mb-4">
+          <div className="flex items-start gap-4">
+            <div className="w-12 h-12 rounded-xl bg-primary/15 ring-1 ring-primary/30 flex items-center justify-center">
+              <ShieldCheck className="w-6 h-6 text-primary" />
             </div>
-            <TrendingUp className="w-4 h-4 text-primary" />
-          </div>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={ocorrenciasPorDia}>
-                <defs>
-                  <linearGradient id="grad1" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#2563EB" stopOpacity={0.55} />
-                    <stop offset="100%" stopColor="#2563EB" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
-                <XAxis dataKey="dia" stroke="#94A3B8" fontSize={12} />
-                <YAxis stroke="#94A3B8" fontSize={12} />
-                <Tooltip {...tooltipStyle} />
-                <Area type="monotone" dataKey="total" stroke="#2563EB" strokeWidth={2} fill="url(#grad1)" />
-              </AreaChart>
-            </ResponsiveContainer>
+            <div className="flex-1">
+              <p className="font-semibold">Bem-vindo ao EPI Guard</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Configure seu ambiente em 3 passos: cadastre funcionários, registre os EPIs e conecte as câmeras do Raspberry Pi.
+              </p>
+              <div className="flex gap-2 mt-4 flex-wrap">
+                <Link to="/funcionarios"><Button size="sm">Começar pelos funcionários</Button></Link>
+                <Link to="/cameras"><Button size="sm" variant="secondary">Conectar câmera</Button></Link>
+              </div>
+            </div>
           </div>
         </Card>
+      )}
 
-        <Card className="p-5 bg-card border-border">
-          <div className="flex items-center justify-between mb-4">
-            <p className="font-medium">Uso correto de EPI</p>
-            <ShieldAlert className="w-4 h-4 text-success" />
-          </div>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={usoCorreto}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
-                <XAxis dataKey="dia" stroke="#94A3B8" fontSize={12} />
-                <YAxis stroke="#94A3B8" fontSize={12} domain={[60, 100]} />
-                <Tooltip {...tooltipStyle} formatter={(v) => `${v}%`} />
-                <Line type="monotone" dataKey="pct" stroke="#16A34A" strokeWidth={2.5} dot={{ r: 3, fill: "#16A34A" }} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </Card>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <Stat icon={Users} label="Funcionários" value={funcionarios.length} tone="primary" />
+        <Stat icon={AlertTriangle} label="Ocorrências hoje" value={ocorrenciasHoje} tone="destructive" />
+        <Stat icon={Clock} label="EPIs a vencer" value={episVencer} tone="warning" />
+        <Stat icon={Cctv} label="Câmeras online" value={`${onlineCams}/${cameras.length}`} tone="success" />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mt-4">
-        <Card className="lg:col-span-2 p-5 bg-card border-border">
-          <div className="flex items-center justify-between mb-4">
-            <p className="font-medium">Setores com mais alertas</p>
-            <Badge variant="secondary" className="text-xs">7 dias</Badge>
-          </div>
-          <div className="h-64">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={setoresAlertas}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
-                <XAxis dataKey="setor" stroke="#94A3B8" fontSize={12} />
-                <YAxis stroke="#94A3B8" fontSize={12} />
-                <Tooltip {...tooltipStyle} />
-                <Bar dataKey="alertas" fill="#DC2626" radius={[6, 6, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </Card>
+      <div className="mt-6">
+        <p className="text-sm font-medium mb-3">Configuração do sistema</p>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          <SetupCard icon={IdCard} title="Cadastrar funcionários" desc="Pessoas monitoradas pela IA" to="/funcionarios" done={funcionarios.length > 0} />
+          <SetupCard icon={HardHat} title="Cadastrar EPIs" desc="Equipamentos e validade" to="/epis" done={epis.length > 0} />
+          <SetupCard icon={Cctv} title="Conectar câmeras" desc="Streams RTSP do Raspberry Pi" to="/cameras" done={cameras.length > 0} />
+          <SetupCard icon={Users} title="Adicionar usuários do painel" desc="Permissões de acesso" to="/usuarios" done={usuarios.length > 0} />
+          <SetupCard icon={AlertTriangle} title="Acompanhar ocorrências" desc="Eventos detectados pela IA" to="/ocorrencias" done={ocorrencias.length > 0} />
+        </div>
+      </div>
 
-        <Card className="p-5 bg-card border-border">
+      {ocorrencias.length > 0 && (
+        <Card className="p-5 bg-card border-border mt-6">
           <p className="font-medium mb-4">Últimas ocorrências</p>
           <ul className="space-y-3">
             {ocorrencias.slice(0, 5).map(o => (
@@ -158,12 +146,14 @@ function Dashboard() {
                   <p className="text-sm font-medium truncate">{o.tipo}</p>
                   <p className="text-xs text-muted-foreground truncate">{o.trabalhador} · {o.local}</p>
                 </div>
-                <span className="text-[10px] text-muted-foreground">{new Date(o.data).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}</span>
+                <span className="text-[10px] text-muted-foreground">
+                  {new Date(o.data).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                </span>
               </li>
             ))}
           </ul>
         </Card>
-      </div>
+      )}
     </AppShell>
   );
 }

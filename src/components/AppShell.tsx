@@ -1,13 +1,15 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard, HardHat, DoorOpen, AlertTriangle, Cctv,
-  Bell, Users, ShieldCheck, Menu, X, Activity,
+  Bell, Users, ShieldCheck, Menu, X, Activity, IdCard,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { useStore } from "@/lib/store";
 
 const nav = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/funcionarios", label: "Funcionários", icon: IdCard },
   { to: "/epis", label: "EPIs", icon: HardHat },
   { to: "/acessos", label: "Acessos", icon: DoorOpen },
   { to: "/ocorrencias", label: "Ocorrências", icon: AlertTriangle },
@@ -19,6 +21,9 @@ const nav = [
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const cameras = useStore("cameras");
+  const onlineCams = cameras.filter(c => c.status === "online").length;
+
 
   return (
     <div className="min-h-screen flex bg-background text-foreground">
@@ -61,8 +66,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </nav>
         <div className="absolute bottom-0 inset-x-0 p-4 border-t border-sidebar-border">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span className="w-2 h-2 rounded-full bg-success live-dot" />
-            YOLOv4 ativo · 6 câmeras
+            <span className={cn("w-2 h-2 rounded-full live-dot", onlineCams > 0 ? "bg-success" : "bg-muted-foreground")} />
+            {onlineCams > 0 ? `YOLOv4 ativo · ${onlineCams}/${cameras.length} câmeras` : "Nenhuma câmera cadastrada"}
           </div>
         </div>
       </aside>
@@ -87,8 +92,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <span className="hidden sm:inline text-xs px-2 py-1 rounded-md bg-success/15 text-success border border-success/30">
-              IA Online
+            <span className={cn(
+              "hidden sm:inline text-xs px-2 py-1 rounded-md border",
+              onlineCams > 0
+                ? "bg-success/15 text-success border-success/30"
+                : "bg-muted text-muted-foreground border-border",
+            )}>
+              {onlineCams > 0 ? "IA Online" : "IA Aguardando câmera"}
             </span>
             <div className="w-9 h-9 rounded-full bg-primary/20 ring-1 ring-primary/40 flex items-center justify-center text-sm font-medium">
               RM
