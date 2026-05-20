@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as UsuariosRouteImport } from './routes/usuarios'
 import { Route as OcorrenciasRouteImport } from './routes/ocorrencias'
 import { Route as NotificacoesRouteImport } from './routes/notificacoes'
+import { Route as FuncionariosRouteImport } from './routes/funcionarios'
 import { Route as EpisRouteImport } from './routes/epis'
 import { Route as CamerasRouteImport } from './routes/cameras'
 import { Route as AcessosRouteImport } from './routes/acessos'
@@ -30,6 +31,11 @@ const OcorrenciasRoute = OcorrenciasRouteImport.update({
 const NotificacoesRoute = NotificacoesRouteImport.update({
   id: '/notificacoes',
   path: '/notificacoes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FuncionariosRoute = FuncionariosRouteImport.update({
+  id: '/funcionarios',
+  path: '/funcionarios',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EpisRoute = EpisRouteImport.update({
@@ -58,6 +64,7 @@ export interface FileRoutesByFullPath {
   '/acessos': typeof AcessosRoute
   '/cameras': typeof CamerasRoute
   '/epis': typeof EpisRoute
+  '/funcionarios': typeof FuncionariosRoute
   '/notificacoes': typeof NotificacoesRoute
   '/ocorrencias': typeof OcorrenciasRoute
   '/usuarios': typeof UsuariosRoute
@@ -67,6 +74,7 @@ export interface FileRoutesByTo {
   '/acessos': typeof AcessosRoute
   '/cameras': typeof CamerasRoute
   '/epis': typeof EpisRoute
+  '/funcionarios': typeof FuncionariosRoute
   '/notificacoes': typeof NotificacoesRoute
   '/ocorrencias': typeof OcorrenciasRoute
   '/usuarios': typeof UsuariosRoute
@@ -77,6 +85,7 @@ export interface FileRoutesById {
   '/acessos': typeof AcessosRoute
   '/cameras': typeof CamerasRoute
   '/epis': typeof EpisRoute
+  '/funcionarios': typeof FuncionariosRoute
   '/notificacoes': typeof NotificacoesRoute
   '/ocorrencias': typeof OcorrenciasRoute
   '/usuarios': typeof UsuariosRoute
@@ -88,6 +97,7 @@ export interface FileRouteTypes {
     | '/acessos'
     | '/cameras'
     | '/epis'
+    | '/funcionarios'
     | '/notificacoes'
     | '/ocorrencias'
     | '/usuarios'
@@ -97,6 +107,7 @@ export interface FileRouteTypes {
     | '/acessos'
     | '/cameras'
     | '/epis'
+    | '/funcionarios'
     | '/notificacoes'
     | '/ocorrencias'
     | '/usuarios'
@@ -106,6 +117,7 @@ export interface FileRouteTypes {
     | '/acessos'
     | '/cameras'
     | '/epis'
+    | '/funcionarios'
     | '/notificacoes'
     | '/ocorrencias'
     | '/usuarios'
@@ -116,6 +128,7 @@ export interface RootRouteChildren {
   AcessosRoute: typeof AcessosRoute
   CamerasRoute: typeof CamerasRoute
   EpisRoute: typeof EpisRoute
+  FuncionariosRoute: typeof FuncionariosRoute
   NotificacoesRoute: typeof NotificacoesRoute
   OcorrenciasRoute: typeof OcorrenciasRoute
   UsuariosRoute: typeof UsuariosRoute
@@ -142,6 +155,13 @@ declare module '@tanstack/react-router' {
       path: '/notificacoes'
       fullPath: '/notificacoes'
       preLoaderRoute: typeof NotificacoesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/funcionarios': {
+      id: '/funcionarios'
+      path: '/funcionarios'
+      fullPath: '/funcionarios'
+      preLoaderRoute: typeof FuncionariosRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/epis': {
@@ -180,6 +200,7 @@ const rootRouteChildren: RootRouteChildren = {
   AcessosRoute: AcessosRoute,
   CamerasRoute: CamerasRoute,
   EpisRoute: EpisRoute,
+  FuncionariosRoute: FuncionariosRoute,
   NotificacoesRoute: NotificacoesRoute,
   OcorrenciasRoute: OcorrenciasRoute,
   UsuariosRoute: UsuariosRoute,
@@ -187,3 +208,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
