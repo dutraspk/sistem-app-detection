@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { AppShell } from "@/components/AppShell";
 import { PageHeader } from "@/components/PageHeader";
 import { EmptyState } from "@/components/EmptyState";
@@ -14,7 +14,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Camera as CamIcon, Wifi, WifiOff, Plus, Trash2, ScanEye, Loader2 } from "lucide-react";
+import { Camera as CamIcon, Wifi, WifiOff, Plus, Trash2, ScanEye, Loader2, Maximize2, Minimize2, CameraOff } from "lucide-react";
 import { useStore, store } from "@/lib/store";
 import { CameraPlayer } from "@/components/CameraPlayer";
 import { Switch } from "@/components/ui/switch";
@@ -34,6 +34,24 @@ function CameraCard({ c }: { c: Camera }) {
   });
   const [ultimo, setUltimo] = useState<string | null>(null);
   const ultimaOcorrencia = useRef(0);
+  const [ligada, setLigada] = useState(true);
+  const [fullscreen, setFullscreen] = useState(false);
+  const boxRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const onFs = () => setFullscreen(document.fullscreenElement === boxRef.current);
+    document.addEventListener("fullscreenchange", onFs);
+    return () => document.removeEventListener("fullscreenchange", onFs);
+  }, []);
+
+  const alternarTela = async () => {
+    try {
+      if (document.fullscreenElement) await document.exitFullscreen();
+      else await boxRef.current?.requestFullscreen();
+    } catch {
+      toast.error("Não foi possível abrir em tela cheia.");
+    }
+  };
 
   const onStatus = useCallback((s: { online: boolean; erro: string | null }) => {
     setStatus(s);
@@ -69,8 +87,8 @@ function CameraCard({ c }: { c: Camera }) {
 
   return (
     <Card className="bg-card border-border overflow-hidden">
-      <div className="relative aspect-video bg-gradient-to-br from-secondary via-card to-background flex items-center justify-center">
-        {c.url ? (
+      <div ref={boxRef} className="relative aspect-video bg-gradient-to-br from-secondary via-card to-background flex items-center justify-center">
+        {c.url && ligada ? (
           <>
             <CameraPlayer
               streamUrl={c.url}
@@ -99,14 +117,33 @@ function CameraCard({ c }: { c: Camera }) {
               <span className="font-mono">{c.id}</span>
               <span>{c.fps} fps</span>
             </div>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => void alternarTela()}
+              className="absolute bottom-8 right-3 z-20 h-7 px-2 text-[11px]"
+            >
+              {fullscreen ? <Minimize2 className="w-3.5 h-3.5 mr-1" /> : <Maximize2 className="w-3.5 h-3.5 mr-1" />}
+              {fullscreen ? "Sair da tela cheia" : "Tela cheia"}
+            </Button>
           </>
         ) : (
           <div className="text-center">
-            <WifiOff className="w-10 h-10 text-destructive mx-auto" />
-            <p className="text-xs text-destructive mt-2">Aguardando conexão</p>
+            {c.url ? (
+              <>
+                <CameraOff className="w-10 h-10 text-muted-foreground mx-auto" />
+                <p className="text-xs text-muted-foreground mt-2">Câmera desligada</p>
+              </>
+            ) : (
+              <>
+                <WifiOff className="w-10 h-10 text-destructive mx-auto" />
+                <p className="text-xs text-destructive mt-2">Aguardando conexão</p>
+              </>
+            )}
           </div>
         )}
       </div>
+
       <div className="p-4">
         <div className="flex items-center justify-between">
           <p className="font-medium">{c.nome}</p>
@@ -126,6 +163,17 @@ function CameraCard({ c }: { c: Camera }) {
         </p>
 
         <div className="flex items-center justify-between mt-3 pt-3 border-t border-border">
+          <div>
+            <p className="text-xs font-medium">Câmera: {ligada ? "ON" : "OFF"}</p>
+            <p className="text-[11px] text-muted-foreground">
+              {ligada ? "Webcam ativa e visível" : "Webcam liberada — clique para reativar"}
+            </p>
+          </div>
+          <Switch checked={ligada} onCheckedChange={setLigada} disabled={!c.url} />
+        </div>
+
+        <div className="flex items-center justify-between mt-3 pt-3 border-t border-border">
+
           <div>
             <p className="text-xs font-medium">Fiscalização por IA</p>
             <p className="text-[11px] text-muted-foreground">
