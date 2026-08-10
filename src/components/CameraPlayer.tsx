@@ -16,6 +16,33 @@ export const CameraPlayer = ({ streamUrl, onFrame, intervaloSegundos = 8 }: Prop
   useEffect(() => {
     if (!videoRef.current || !streamUrl) return;
 
+    // Câmera local do dispositivo (webcam/USB): device:<deviceId>
+    if (streamUrl.startsWith("device:")) {
+      const deviceId = streamUrl.slice("device:".length);
+      let ativo = true;
+      let stream: MediaStream | null = null;
+
+      navigator.mediaDevices
+        .getUserMedia({
+          video: deviceId ? { deviceId: { exact: deviceId } } : true,
+          audio: false,
+        })
+        .then((s) => {
+          if (!ativo) {
+            s.getTracks().forEach((t) => t.stop());
+            return;
+          }
+          stream = s;
+          if (videoRef.current) videoRef.current.srcObject = s;
+        })
+        .catch(console.error);
+
+      return () => {
+        ativo = false;
+        stream?.getTracks().forEach((t) => t.stop());
+      };
+    }
+
     // Normaliza a URL para o endpoint WHEP do MediaMTX
     const whepUrl = streamUrl.endsWith("/") ? `${streamUrl}whep` : `${streamUrl}/whep`;
     const pc = new RTCPeerConnection();
