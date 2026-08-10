@@ -132,9 +132,10 @@ function CameraCard({ c }: { c: Camera }) {
               {!ia
                 ? "Desligada"
                 : status.online
-                  ? "IA Online — enviando ~5 frames/s ao YOLO local"
+                  ? (ultimo ?? "IA Online — enviando ~5 frames/s ao YOLO local")
                   : (status.erro ?? "Conectando ao servidor YOLO local…")}
             </p>
+
 
           </div>
           <Switch checked={ia} onCheckedChange={setIa} disabled={!c.url} />
