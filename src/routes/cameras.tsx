@@ -18,10 +18,8 @@ import { Camera as CamIcon, Wifi, WifiOff, Plus, Trash2, ScanEye, Loader2 } from
 import { useStore, store } from "@/lib/store";
 import { CameraPlayer } from "@/components/CameraPlayer";
 import { Switch } from "@/components/ui/switch";
-import { useServerFn } from "@tanstack/react-start";
-import { analisarFrame } from "@/lib/analise.functions";
-import { toast } from "sonner";
 import type { Camera } from "@/lib/mock-data";
+
 
 export const Route = createFileRoute("/cameras")({ component: Cameras });
 
