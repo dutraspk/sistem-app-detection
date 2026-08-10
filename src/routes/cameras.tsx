@@ -121,7 +121,9 @@ function CameraCard({ c }: { c: Camera }) {
           </div>
         </div>
         <p className="text-xs text-muted-foreground mt-1">{c.setor} · {c.tipo}</p>
-        <p className="text-[10px] text-muted-foreground font-mono truncate mt-1">{c.url}</p>
+        <p className="text-[10px] text-muted-foreground font-mono truncate mt-1">
+          {c.url.startsWith("device:") ? "Câmera local do dispositivo" : c.url}
+        </p>
 
         <div className="flex items-center justify-between mt-3 pt-3 border-t border-border">
           <div>
