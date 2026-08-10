@@ -197,49 +197,9 @@ function Cameras() {
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {cameras.map(c => {
-            const on = c.status === "online";
-            return (
-              <Card key={c.id} className="bg-card border-border overflow-hidden">
-                <div className="relative aspect-video bg-gradient-to-br from-secondary via-card to-background flex items-center justify-center">
-                  {c.url ? (
-                    <>
-                      <CameraPlayer streamUrl={c.url} />
-                      <div className="absolute top-3 left-3 z-10 inline-flex items-center gap-1.5 text-[10px] uppercase tracking-wider px-2 py-1 bg-destructive/90 text-destructive-foreground rounded pointer-events-none">
-                        <span className="w-1.5 h-1.5 rounded-full bg-white live-dot" />Rec
-                      </div>
-                      <div className="absolute bottom-3 left-3 right-3 z-10 flex items-center justify-between text-[10px] text-white/70 pointer-events-none">
-                        <span className="font-mono">{c.id}</span>
-                        <span>{c.fps} fps</span>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="text-center">
-                      <WifiOff className="w-10 h-10 text-destructive mx-auto" />
-                      <p className="text-xs text-destructive mt-2">Aguardando conexão</p>
-                    </div>
-                  )}
-                </div>
-                <div className="p-4">
-                  <div className="flex items-center justify-between">
-                    <p className="font-medium">{c.nome}</p>
-                    <div className="flex items-center gap-1">
-                      {on
-                        ? <Badge className="bg-success/15 text-success border-success/30 hover:bg-success/15"><Wifi className="w-3 h-3 mr-1" />Online</Badge>
-                        : <Badge className="bg-muted text-muted-foreground border-border">Offline</Badge>}
-                      <button onClick={() => store.removeCamera(c.id)}
-                        className="p-1.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive">
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">{c.setor} · {c.tipo}</p>
-                  <p className="text-[10px] text-muted-foreground font-mono truncate mt-1">{c.url}</p>
-                </div>
-              </Card>
-            );
-          })}
+          {cameras.map(c => <CameraCard key={c.id} c={c} />)}
         </div>
+
       )}
     </AppShell>
   );
