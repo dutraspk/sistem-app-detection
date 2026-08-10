@@ -135,3 +135,56 @@ curl -X POST https://SEU-APP.lovable.app/api/public/eventos \
 ```
 
 O evento deve aparecer na página **Detecções IA** na hora.
+
+## 6. Servidor YOLO local (http://localhost:8000)
+
+O app envia ~5 frames/s para `POST /detect` (campo `file`, JPEG 640px) e mostra a
+imagem JPEG retornada com as caixas desenhadas. Para que o app crie **ocorrências
+automáticas**, o servidor deve devolver os EPIs nos cabeçalhos da resposta:
+
+```
+X-Detections: capacete,colete
+X-Missing: oculos,luva
+Access-Control-Allow-Origin: *
+Access-Control-Expose-Headers: X-Detections, X-Missing
+```
+
+Exemplo (FastAPI):
+
+```python
+from fastapi import FastAPI, UploadFile, File
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import Response
+from ultralytics import YOLO
+import cv2, numpy as np
+
+app = FastAPI()
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"],
+                   allow_headers=["*"], expose_headers=["X-Detections", "X-Missing"])
+
+model = YOLO("yolo.pt")
+OBRIGATORIOS = {"capacete", "oculos", "luva", "bota", "colete"}
+
+@app.get("/health")
+def health():
+    return {"ok": True}
+
+@app.post("/detect")
+async def detect(file: UploadFile = File(...)):
+    buf = np.frombuffer(await file.read(), np.uint8)
+    frame = cv2.imdecode(buf, cv2.IMREAD_COLOR)
+    r = model(frame)[0]
+    nomes = {r.names[int(c)] for c in r.boxes.cls}
+    faltando = sorted(OBRIGATORIOS - nomes) if "pessoa" in nomes else []
+    _, jpg = cv2.imencode(".jpg", r.plot(), [cv2.IMWRITE_JPEG_QUALITY, 70])
+    return Response(jpg.tobytes(), media_type="image/jpeg", headers={
+        "X-Detections": ",".join(sorted(nomes)),
+        "X-Missing": ",".join(faltando),
+    })
+```
+
+Rodar: `pip install fastapi uvicorn ultralytics opencv-python` e
+`uvicorn servidor:app --port 8000`.
+
+Sem EPI → aparece alerta na tela e uma **ocorrência** é criada automaticamente
+(no máximo 1 por minuto por câmera).
