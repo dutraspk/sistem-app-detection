@@ -234,7 +234,7 @@ export const CameraPlayer = ({
         <img
           src={processada}
           alt="Frame com detecções do YOLO"
-          className="absolute inset-0 w-full h-full object-cover"
+          className="absolute bottom-2 right-2 w-1/3 max-w-[180px] rounded-md border border-border/60 shadow-lg pointer-events-none"
         />
       )}
     </>
