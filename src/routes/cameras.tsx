@@ -34,6 +34,24 @@ function CameraCard({ c }: { c: Camera }) {
   });
   const [ultimo, setUltimo] = useState<string | null>(null);
   const ultimaOcorrencia = useRef(0);
+  const [ligada, setLigada] = useState(true);
+  const [fullscreen, setFullscreen] = useState(false);
+  const boxRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const onFs = () => setFullscreen(document.fullscreenElement === boxRef.current);
+    document.addEventListener("fullscreenchange", onFs);
+    return () => document.removeEventListener("fullscreenchange", onFs);
+  }, []);
+
+  const alternarTela = async () => {
+    try {
+      if (document.fullscreenElement) await document.exitFullscreen();
+      else await boxRef.current?.requestFullscreen();
+    } catch {
+      toast.error("Não foi possível abrir em tela cheia.");
+    }
+  };
 
   const onStatus = useCallback((s: { online: boolean; erro: string | null }) => {
     setStatus(s);
