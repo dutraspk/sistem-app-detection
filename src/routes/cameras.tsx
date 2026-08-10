@@ -30,17 +30,54 @@ function CameraCard({ c }: { c: Camera }) {
     online: false,
     erro: null,
   });
+  const [ultimo, setUltimo] = useState<string | null>(null);
+  const ultimaOcorrencia = useRef(0);
 
   const onStatus = useCallback((s: { online: boolean; erro: string | null }) => {
     setStatus(s);
   }, []);
+
+  const onDeteccao = useCallback(
+    ({ faltando }: { detectados: string[]; faltando: string[] }) => {
+      if (!faltando.length) {
+        setUltimo("Liberado — todos os EPIs detectados");
+        return;
+      }
+      setUltimo(`Bloqueado — faltando ${faltando.join(", ")}`);
+
+      // evita spam: no máximo 1 ocorrência por minuto por câmera
+      const agora = Date.now();
+      if (agora - ultimaOcorrencia.current < 60_000) return;
+      ultimaOcorrencia.current = agora;
+
+      toast.error(`${c.nome}: EPI faltando (${faltando.join(", ")})`);
+      store.addOcorrencia({
+        tipo: `EPI faltando: ${faltando.join(", ")}`,
+        trabalhador: "Não identificado",
+        local: c.setor || c.nome,
+        camera: c.nome,
+        gravidade: "Alta",
+        data: new Date().toISOString(),
+        status: "Aberta",
+        observacoes: `Detectado automaticamente pela IA local (YOLO) na câmera ${c.nome}.`,
+      });
+    },
+    [c.nome, c.setor],
+  );
 
   return (
     <Card className="bg-card border-border overflow-hidden">
       <div className="relative aspect-video bg-gradient-to-br from-secondary via-card to-background flex items-center justify-center">
         {c.url ? (
           <>
-            <CameraPlayer streamUrl={c.url} yoloAtivo={ia} fps={5} onStatus={onStatus} />
+            <CameraPlayer
+              streamUrl={c.url}
+              yoloAtivo={ia}
+              fps={5}
+              onStatus={onStatus}
+              onDeteccao={onDeteccao}
+            />
+
             <div className="absolute top-3 left-3 z-10 inline-flex items-center gap-1.5 text-[10px] uppercase tracking-wider px-2 py-1 bg-destructive/90 text-destructive-foreground rounded pointer-events-none">
               <span className="w-1.5 h-1.5 rounded-full bg-white live-dot" />Rec
             </div>
