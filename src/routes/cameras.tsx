@@ -151,17 +151,37 @@ function Cameras() {
   });
 
   const carregarDispositivos = useCallback(async () => {
+    setPermErro(null);
+    if (typeof navigator === "undefined" || !navigator.mediaDevices?.enumerateDevices) {
+      setPermErro("Este navegador não permite acessar câmeras locais.");
+      return;
+    }
     try {
       const s = await navigator.mediaDevices.getUserMedia({ video: true });
       s.getTracks().forEach((t) => t.stop());
+    } catch (e) {
+      const nome = e instanceof Error ? e.name : "";
+      const emIframe = typeof window !== "undefined" && window.self !== window.top;
+      setPermErro(
+        nome === "NotAllowedError"
+          ? emIframe
+            ? "A pré-visualização bloqueia a câmera. Abra o app em uma aba nova (botão de abrir em nova janela) e permita o acesso."
+            : "Permissão de câmera negada. Autorize o acesso no cadeado da barra de endereço."
+          : nome === "NotFoundError"
+            ? "Nenhuma câmera encontrada neste computador."
+            : `Não foi possível acessar a câmera (${nome || "erro desconhecido"}).`,
+      );
+    }
+    try {
       const todos = await navigator.mediaDevices.enumerateDevices();
       const cams = todos.filter((d) => d.kind === "videoinput");
       setDispositivos(cams);
-      setPermErro(cams.length ? null : "Nenhuma câmera encontrada neste dispositivo.");
+      if (cams.length) setPermErro((p) => (p && !cams[0].label ? p : null));
     } catch {
-      setPermErro("Permissão de câmera negada. Autorize o acesso no navegador.");
+      setDispositivos([]);
     }
   }, []);
+
 
   const abrir = (v: boolean) => {
     setOpen(v);
