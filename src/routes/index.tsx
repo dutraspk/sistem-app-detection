@@ -1,16 +1,61 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  Users, AlertTriangle, Clock, Cctv, IdCard, HardHat, ArrowRight, ShieldCheck,
+  Users, AlertTriangle, Clock, Cctv, IdCard, HardHat, ArrowRight, ShieldCheck, ScanEye,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { statusFromValidade } from "@/lib/mock-data";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/")({ component: Dashboard });
+
+type DeteccaoLive = {
+  id: string;
+  camera: string;
+  setor: string | null;
+  validacao: string;
+  epis_faltando: string[];
+  frame_url: string | null;
+  ocorreu_em: string;
+};
+
+function useDeteccoesLive(limite = 6) {
+  const [itens, setItens] = useState<DeteccaoLive[]>([]);
+
+  useEffect(() => {
+    let ativo = true;
+    supabase
+      .from("deteccoes")
+      .select("id,camera,setor,validacao,epis_faltando,frame_url,ocorreu_em")
+      .order("ocorreu_em", { ascending: false })
+      .limit(limite)
+      .then(({ data }) => {
+        if (ativo) setItens((data ?? []) as DeteccaoLive[]);
+      });
+
+    const channel = supabase
+      .channel("dashboard-deteccoes")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "deteccoes" },
+        (payload) => setItens((prev) => [payload.new as DeteccaoLive, ...prev].slice(0, limite)),
+      )
+      .subscribe();
+
+    return () => {
+      ativo = false;
+      supabase.removeChannel(channel);
+    };
+  }, [limite]);
+
+  return itens;
+}
+
 
 function Stat({ icon: Icon, label, value, trend, tone = "primary" }: {
   icon: React.ComponentType<{ className?: string }>;
@@ -70,6 +115,7 @@ function Dashboard() {
   const ocorrencias = useStore("ocorrencias");
   const cameras = useStore("cameras");
   const usuarios = useStore("usuarios");
+  const deteccoes = useDeteccoesLive(6);
 
   const ocorrenciasHoje = ocorrencias.filter(o => Date.now() - new Date(o.data).getTime() < 86400000).length;
   const episVencer = epis.filter(e => {
@@ -131,6 +177,46 @@ function Dashboard() {
           <SetupCard icon={AlertTriangle} title="Acompanhar ocorrências" desc="Eventos detectados pela IA" to="/ocorrencias" done={ocorrencias.length > 0} />
         </div>
       </div>
+
+      {deteccoes.length > 0 && (
+        <Card className="p-5 bg-card border-border mt-6">
+          <div className="flex items-center justify-between mb-4">
+            <p className="font-medium flex items-center gap-2">
+              <ScanEye className="w-4 h-4 text-primary" /> Detecções da IA ao vivo
+            </p>
+            <Link to="/deteccoes" className="text-xs text-primary hover:underline">Ver tudo</Link>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {deteccoes.map(d => (
+              <div key={d.id} className="rounded-lg border border-border overflow-hidden bg-secondary/40">
+                <div className="aspect-video bg-secondary flex items-center justify-center">
+                  {d.frame_url ? (
+                    <img src={d.frame_url} alt={`Frame da câmera ${d.camera}`} loading="lazy"
+                      className="w-full h-full object-cover" />
+                  ) : <ScanEye className="w-8 h-8 text-muted-foreground" />}
+                </div>
+                <div className="p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs font-medium truncate">{d.camera}{d.setor ? ` · ${d.setor}` : ""}</p>
+                    <Badge className={d.validacao === "Bloqueado"
+                      ? "bg-destructive/15 text-destructive border-destructive/30 hover:bg-destructive/15"
+                      : "bg-success/15 text-success border-success/30 hover:bg-success/15"}>
+                      {d.validacao}
+                    </Badge>
+                  </div>
+                  {d.epis_faltando.length > 0 && (
+                    <p className="text-[11px] text-destructive mt-1">Faltando: {d.epis_faltando.join(", ")}</p>
+                  )}
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    {new Date(d.ocorreu_em).toLocaleString("pt-BR")}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
 
       {ocorrencias.length > 0 && (
         <Card className="p-5 bg-card border-border mt-6">
