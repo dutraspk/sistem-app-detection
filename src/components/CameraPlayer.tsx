@@ -29,7 +29,7 @@ export const CameraPlayer = ({
 
 
   useEffect(() => {
-    if (!videoRef.current || !streamUrl) return;
+    if (!streamUrl) return;
 
     // Câmera local do dispositivo (webcam/USB): device:<deviceId>
     if (streamUrl.startsWith("device:")) {
@@ -37,26 +37,42 @@ export const CameraPlayer = ({
       let ativo = true;
       let stream: MediaStream | null = null;
 
-      navigator.mediaDevices
-        .getUserMedia({
-          video: deviceId ? { deviceId: { exact: deviceId } } : true,
-          audio: false,
-        })
-        .then((s) => {
-          if (!ativo) {
-            s.getTracks().forEach((t) => t.stop());
-            return;
-          }
-          stream = s;
-          if (videoRef.current) videoRef.current.srcObject = s;
-        })
-        .catch(console.error);
+      const anexar = (s: MediaStream) => {
+        if (!ativo) {
+          s.getTracks().forEach((t) => t.stop());
+          return;
+        }
+        stream = s;
+        const v = videoRef.current;
+        if (!v) return;
+        v.srcObject = s;
+        v.muted = true;
+        void v.play().catch(() => {});
+      };
+
+      (async () => {
+        try {
+          // Preferência: dispositivo escolhido. Fallback: qualquer webcam.
+          const s = deviceId
+            ? await navigator.mediaDevices
+                .getUserMedia({ video: { deviceId: { exact: deviceId } }, audio: false })
+                .catch(() => navigator.mediaDevices.getUserMedia({ video: true, audio: false }))
+            : await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+          anexar(s);
+        } catch (e) {
+          console.error("Falha ao abrir a webcam:", e);
+        }
+      })();
 
       return () => {
         ativo = false;
+        const v = videoRef.current;
+        if (v) v.srcObject = null;
         stream?.getTracks().forEach((t) => t.stop());
       };
     }
+
+    if (!videoRef.current) return;
 
     // Normaliza a URL para o endpoint WHEP do MediaMTX
     const whepUrl = streamUrl.endsWith("/") ? `${streamUrl}whep` : `${streamUrl}/whep`;
@@ -218,7 +234,7 @@ export const CameraPlayer = ({
         <img
           src={processada}
           alt="Frame com detecções do YOLO"
-          className="absolute inset-0 w-full h-full object-cover"
+          className="absolute bottom-2 right-2 w-1/3 max-w-[180px] rounded-md border border-border/60 shadow-lg pointer-events-none"
         />
       )}
     </>
