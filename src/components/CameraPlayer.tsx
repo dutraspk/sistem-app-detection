@@ -9,13 +9,24 @@ type Props = {
   /** Requisições por segundo (aprox.). */
   fps?: number;
   onStatus?: (s: { online: boolean; erro: string | null }) => void;
+  /** Chamado quando o servidor YOLO informa EPIs detectados/faltando. */
+  onDeteccao?: (d: { detectados: string[]; faltando: string[] }) => void;
 };
 
-export const CameraPlayer = ({ streamUrl, yoloAtivo = false, fps = 5, onStatus }: Props) => {
+export const CameraPlayer = ({
+  streamUrl,
+  yoloAtivo = false,
+  fps = 5,
+  onStatus,
+  onDeteccao,
+}: Props) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [processada, setProcessada] = useState<string | null>(null);
   const onStatusRef = useRef(onStatus);
   onStatusRef.current = onStatus;
+  const onDeteccaoRef = useRef(onDeteccao);
+  onDeteccaoRef.current = onDeteccao;
+
 
   useEffect(() => {
     if (!videoRef.current || !streamUrl) return;
@@ -143,6 +154,20 @@ export const CameraPlayer = ({ streamUrl, yoloAtivo = false, fps = 5, onStatus }
           signal: ac.signal,
         });
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
+
+        const lista = (v: string | null) =>
+          (v ?? "")
+            .split(",")
+            .map((s) => s.trim().toLowerCase())
+            .filter(Boolean);
+
+        const detectados = lista(
+          r.headers.get("x-detections") ?? r.headers.get("x-epis-detectados"),
+        );
+        const faltando = lista(
+          r.headers.get("x-missing") ?? r.headers.get("x-epis-faltando"),
+        );
+
         const out = await r.blob();
         if (!vivo) return;
         const url = URL.createObjectURL(out);
@@ -150,6 +175,10 @@ export const CameraPlayer = ({ streamUrl, yoloAtivo = false, fps = 5, onStatus }
         objectUrl = url;
         setProcessada(url);
         onStatusRef.current?.({ online: true, erro: null });
+        if (detectados.length || faltando.length) {
+          onDeteccaoRef.current?.({ detectados, faltando });
+        }
+
       } catch (e) {
         if (vivo && (e as Error).name !== "AbortError") {
           onStatusRef.current?.({
