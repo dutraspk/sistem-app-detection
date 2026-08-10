@@ -1,7 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard, HardHat, DoorOpen, AlertTriangle, Cctv,
-  Bell, Users, ShieldCheck, Menu, X, Activity, IdCard,
+  Bell, Users, ShieldCheck, Menu, X, Activity, IdCard, ScanEye,
 } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -14,6 +14,7 @@ const nav = [
   { to: "/acessos", label: "Acessos", icon: DoorOpen },
   { to: "/ocorrencias", label: "Ocorrências", icon: AlertTriangle },
   { to: "/cameras", label: "Câmeras IA", icon: Cctv },
+  { to: "/deteccoes", label: "Detecções IA", icon: ScanEye },
   { to: "/notificacoes", label: "Notificações", icon: Bell },
   { to: "/usuarios", label: "Usuários", icon: Users },
 ];

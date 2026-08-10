@@ -14,6 +14,7 @@ import { Route as OcorrenciasRouteImport } from './routes/ocorrencias'
 import { Route as NotificacoesRouteImport } from './routes/notificacoes'
 import { Route as FuncionariosRouteImport } from './routes/funcionarios'
 import { Route as EpisRouteImport } from './routes/epis'
+import { Route as DeteccoesRouteImport } from './routes/deteccoes'
 import { Route as CamerasRouteImport } from './routes/cameras'
 import { Route as AcessosRouteImport } from './routes/acessos'
 import { Route as IndexRouteImport } from './routes/index'
@@ -44,6 +45,11 @@ const EpisRoute = EpisRouteImport.update({
   path: '/epis',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DeteccoesRoute = DeteccoesRouteImport.update({
+  id: '/deteccoes',
+  path: '/deteccoes',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CamerasRoute = CamerasRouteImport.update({
   id: '/cameras',
   path: '/cameras',
@@ -69,6 +75,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/acessos': typeof AcessosRoute
   '/cameras': typeof CamerasRoute
+  '/deteccoes': typeof DeteccoesRoute
   '/epis': typeof EpisRoute
   '/funcionarios': typeof FuncionariosRoute
   '/notificacoes': typeof NotificacoesRoute
@@ -80,6 +87,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/acessos': typeof AcessosRoute
   '/cameras': typeof CamerasRoute
+  '/deteccoes': typeof DeteccoesRoute
   '/epis': typeof EpisRoute
   '/funcionarios': typeof FuncionariosRoute
   '/notificacoes': typeof NotificacoesRoute
@@ -92,6 +100,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/acessos': typeof AcessosRoute
   '/cameras': typeof CamerasRoute
+  '/deteccoes': typeof DeteccoesRoute
   '/epis': typeof EpisRoute
   '/funcionarios': typeof FuncionariosRoute
   '/notificacoes': typeof NotificacoesRoute
@@ -105,6 +114,7 @@ export interface FileRouteTypes {
     | '/'
     | '/acessos'
     | '/cameras'
+    | '/deteccoes'
     | '/epis'
     | '/funcionarios'
     | '/notificacoes'
@@ -116,6 +126,7 @@ export interface FileRouteTypes {
     | '/'
     | '/acessos'
     | '/cameras'
+    | '/deteccoes'
     | '/epis'
     | '/funcionarios'
     | '/notificacoes'
@@ -127,6 +138,7 @@ export interface FileRouteTypes {
     | '/'
     | '/acessos'
     | '/cameras'
+    | '/deteccoes'
     | '/epis'
     | '/funcionarios'
     | '/notificacoes'
@@ -139,6 +151,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AcessosRoute: typeof AcessosRoute
   CamerasRoute: typeof CamerasRoute
+  DeteccoesRoute: typeof DeteccoesRoute
   EpisRoute: typeof EpisRoute
   FuncionariosRoute: typeof FuncionariosRoute
   NotificacoesRoute: typeof NotificacoesRoute
@@ -184,6 +197,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EpisRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/deteccoes': {
+      id: '/deteccoes'
+      path: '/deteccoes'
+      fullPath: '/deteccoes'
+      preLoaderRoute: typeof DeteccoesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/cameras': {
       id: '/cameras'
       path: '/cameras'
@@ -219,6 +239,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AcessosRoute: AcessosRoute,
   CamerasRoute: CamerasRoute,
+  DeteccoesRoute: DeteccoesRoute,
   EpisRoute: EpisRoute,
   FuncionariosRoute: FuncionariosRoute,
   NotificacoesRoute: NotificacoesRoute,
