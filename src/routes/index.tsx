@@ -1,16 +1,61 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { PageHeader } from "@/components/PageHeader";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  Users, AlertTriangle, Clock, Cctv, IdCard, HardHat, ArrowRight, ShieldCheck,
+  Users, AlertTriangle, Clock, Cctv, IdCard, HardHat, ArrowRight, ShieldCheck, ScanEye,
 } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { statusFromValidade } from "@/lib/mock-data";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/")({ component: Dashboard });
+
+type DeteccaoLive = {
+  id: string;
+  camera: string;
+  setor: string | null;
+  validacao: string;
+  epis_faltando: string[];
+  frame_url: string | null;
+  ocorreu_em: string;
+};
+
+function useDeteccoesLive(limite = 6) {
+  const [itens, setItens] = useState<DeteccaoLive[]>([]);
+
+  useEffect(() => {
+    let ativo = true;
+    supabase
+      .from("deteccoes")
+      .select("id,camera,setor,validacao,epis_faltando,frame_url,ocorreu_em")
+      .order("ocorreu_em", { ascending: false })
+      .limit(limite)
+      .then(({ data }) => {
+        if (ativo) setItens((data ?? []) as DeteccaoLive[]);
+      });
+
+    const channel = supabase
+      .channel("dashboard-deteccoes")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "deteccoes" },
+        (payload) => setItens((prev) => [payload.new as DeteccaoLive, ...prev].slice(0, limite)),
+      )
+      .subscribe();
+
+    return () => {
+      ativo = false;
+      supabase.removeChannel(channel);
+    };
+  }, [limite]);
+
+  return itens;
+}
+
 
 function Stat({ icon: Icon, label, value, trend, tone = "primary" }: {
   icon: React.ComponentType<{ className?: string }>;
