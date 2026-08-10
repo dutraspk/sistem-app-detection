@@ -14,7 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      deteccoes: {
+        Row: {
+          camera: string
+          confianca: number | null
+          created_at: string
+          epis_detectados: string[]
+          epis_faltando: string[]
+          frame_url: string | null
+          id: string
+          ocorreu_em: string
+          setor: string | null
+          trabalhador: string | null
+          validacao: string
+        }
+        Insert: {
+          camera: string
+          confianca?: number | null
+          created_at?: string
+          epis_detectados?: string[]
+          epis_faltando?: string[]
+          frame_url?: string | null
+          id?: string
+          ocorreu_em?: string
+          setor?: string | null
+          trabalhador?: string | null
+          validacao?: string
+        }
+        Update: {
+          camera?: string
+          confianca?: number | null
+          created_at?: string
+          epis_detectados?: string[]
+          epis_faltando?: string[]
+          frame_url?: string | null
+          id?: string
+          ocorreu_em?: string
+          setor?: string | null
+          trabalhador?: string | null
+          validacao?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
