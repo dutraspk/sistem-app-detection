@@ -59,11 +59,13 @@ function CameraCard({ c }: { c: Camera }) {
               tipo: `EPI faltando: ${r.epis_faltando.join(", ")}`,
               trabalhador: "Não identificado",
               local: c.setor || c.nome,
+              camera: c.nome,
               gravidade: "Alta",
               data: new Date().toISOString(),
               status: "Aberta",
               observacoes: `Detectado automaticamente pela IA na câmera ${c.nome}.`,
-            } as never);
+            });
+
           }
         } else {
           setUltimo("Nenhuma pessoa no frame");
