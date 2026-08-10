@@ -9,13 +9,24 @@ type Props = {
   /** Requisições por segundo (aprox.). */
   fps?: number;
   onStatus?: (s: { online: boolean; erro: string | null }) => void;
+  /** Chamado quando o servidor YOLO informa EPIs detectados/faltando. */
+  onDeteccao?: (d: { detectados: string[]; faltando: string[] }) => void;
 };
 
-export const CameraPlayer = ({ streamUrl, yoloAtivo = false, fps = 5, onStatus }: Props) => {
+export const CameraPlayer = ({
+  streamUrl,
+  yoloAtivo = false,
+  fps = 5,
+  onStatus,
+  onDeteccao,
+}: Props) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [processada, setProcessada] = useState<string | null>(null);
   const onStatusRef = useRef(onStatus);
   onStatusRef.current = onStatus;
+  const onDeteccaoRef = useRef(onDeteccao);
+  onDeteccaoRef.current = onDeteccao;
+
 
   useEffect(() => {
     if (!videoRef.current || !streamUrl) return;
