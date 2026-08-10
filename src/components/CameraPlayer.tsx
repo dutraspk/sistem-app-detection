@@ -1,17 +1,21 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+
+export const YOLO_API_URL = "http://localhost:8000";
 
 type Props = {
   streamUrl: string;
-  /** Quando definido, captura frames periodicamente para análise da IA. */
-  onFrame?: (base64: string) => void;
-  /** Intervalo entre capturas, em segundos. */
-  intervaloSegundos?: number;
+  /** Liga o envio de frames para o servidor YOLO local. */
+  yoloAtivo?: boolean;
+  /** Requisições por segundo (aprox.). */
+  fps?: number;
+  onStatus?: (s: { online: boolean; erro: string | null }) => void;
 };
 
-export const CameraPlayer = ({ streamUrl, onFrame, intervaloSegundos = 8 }: Props) => {
+export const CameraPlayer = ({ streamUrl, yoloAtivo = false, fps = 5, onStatus }: Props) => {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const onFrameRef = useRef(onFrame);
-  onFrameRef.current = onFrame;
+  const [processada, setProcessada] = useState<string | null>(null);
+  const onStatusRef = useRef(onStatus);
+  onStatusRef.current = onStatus;
 
   useEffect(() => {
     if (!videoRef.current || !streamUrl) return;
@@ -75,39 +79,119 @@ export const CameraPlayer = ({ streamUrl, onFrame, intervaloSegundos = 8 }: Prop
     };
   }, [streamUrl]);
 
-  // Captura de frames para a IA
+  // Envio de frames para o YOLO local
   useEffect(() => {
-    if (!onFrame) return;
+    if (!yoloAtivo) {
+      setProcessada((url) => {
+        if (url) URL.revokeObjectURL(url);
+        return null;
+      });
+      onStatusRef.current?.({ online: false, erro: null });
+      return;
+    }
+
+    let vivo = true;
+    let ocupado = false;
+    let objectUrl: string | null = null;
+    const controllers = new Set<AbortController>();
     const canvas = document.createElement("canvas");
 
-    const capturar = () => {
+    const checarSaude = async () => {
+      const ac = new AbortController();
+      controllers.add(ac);
+      const t = setTimeout(() => ac.abort(), 4000);
+      try {
+        const r = await fetch(`${YOLO_API_URL}/health`, { signal: ac.signal });
+        if (vivo) onStatusRef.current?.({ online: r.ok, erro: r.ok ? null : "IA local offline — inicie o servidor YOLO no notebook" });
+      } catch {
+        if (vivo) onStatusRef.current?.({ online: false, erro: "IA local offline — inicie o servidor YOLO no notebook" });
+      } finally {
+        clearTimeout(t);
+        controllers.delete(ac);
+      }
+    };
+
+    void checarSaude();
+    const healthTimer = setInterval(() => void checarSaude(), 10000);
+
+    const enviar = async () => {
+      if (!vivo || ocupado) return;
       const video = videoRef.current;
       if (!video || !video.videoWidth) return;
-      const escala = Math.min(1, 640 / video.videoWidth);
-      canvas.width = Math.round(video.videoWidth * escala);
-      canvas.height = Math.round(video.videoHeight * escala);
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      onFrameRef.current?.(canvas.toDataURL("image/jpeg", 0.7));
+      ocupado = true;
+      const ac = new AbortController();
+      controllers.add(ac);
+      try {
+        const escala = Math.min(1, 640 / video.videoWidth);
+        canvas.width = Math.round(video.videoWidth * escala);
+        canvas.height = Math.round(video.videoHeight * escala);
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return;
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        const blob = await new Promise<Blob | null>((res) =>
+          canvas.toBlob(res, "image/jpeg", 0.7),
+        );
+        if (!blob || !vivo) return;
+
+        const fd = new FormData();
+        fd.append("file", blob, "frame.jpg");
+
+        const r = await fetch(`${YOLO_API_URL}/detect`, {
+          method: "POST",
+          body: fd,
+          signal: ac.signal,
+        });
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        const out = await r.blob();
+        if (!vivo) return;
+        const url = URL.createObjectURL(out);
+        if (objectUrl) URL.revokeObjectURL(objectUrl);
+        objectUrl = url;
+        setProcessada(url);
+        onStatusRef.current?.({ online: true, erro: null });
+      } catch (e) {
+        if (vivo && (e as Error).name !== "AbortError") {
+          onStatusRef.current?.({
+            online: false,
+            erro: "IA local offline — inicie o servidor YOLO no notebook",
+          });
+        }
+      } finally {
+        controllers.delete(ac);
+        ocupado = false;
+      }
     };
 
-    const t = setInterval(capturar, Math.max(3, intervaloSegundos) * 1000);
-    const primeira = setTimeout(capturar, 2500);
+    const timer = setInterval(() => void enviar(), Math.max(100, 1000 / Math.max(1, fps)));
+
     return () => {
-      clearInterval(t);
-      clearTimeout(primeira);
+      vivo = false;
+      clearInterval(timer);
+      clearInterval(healthTimer);
+      controllers.forEach((c) => c.abort());
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+      setProcessada(null);
     };
-  }, [onFrame, intervaloSegundos]);
+  }, [yoloAtivo, fps]);
 
   return (
-    <video
-      ref={videoRef}
-      autoPlay
-      playsInline
-      muted
-      style={{ width: "100%", height: "100%", objectFit: "cover" }}
-      className="absolute inset-0 bg-black"
-    />
+    <>
+      <video
+        ref={videoRef}
+        autoPlay
+        playsInline
+        muted
+        style={{ width: "100%", height: "100%", objectFit: "cover" }}
+        className="absolute inset-0 bg-black"
+      />
+      {yoloAtivo && processada && (
+        <img
+          src={processada}
+          alt="Frame com detecções do YOLO"
+          className="absolute inset-0 w-full h-full object-cover"
+        />
+      )}
+    </>
   );
 };
