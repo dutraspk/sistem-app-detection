@@ -121,7 +121,9 @@ function CameraCard({ c }: { c: Camera }) {
           </div>
         </div>
         <p className="text-xs text-muted-foreground mt-1">{c.setor} · {c.tipo}</p>
-        <p className="text-[10px] text-muted-foreground font-mono truncate mt-1">{c.url}</p>
+        <p className="text-[10px] text-muted-foreground font-mono truncate mt-1">
+          {c.url.startsWith("device:") ? "Câmera local do dispositivo" : c.url}
+        </p>
 
         <div className="flex items-center justify-between mt-3 pt-3 border-t border-border">
           <div>
@@ -141,29 +143,70 @@ function CameraCard({ c }: { c: Camera }) {
 function Cameras() {
   const cameras = useStore("cameras");
   const [open, setOpen] = useState(false);
+  const [dispositivos, setDispositivos] = useState<MediaDeviceInfo[]>([]);
+  const [permErro, setPermErro] = useState<string | null>(null);
   const [form, setForm] = useState({
     nome: "", setor: "", tipo: "Entrada" as "Entrada" | "Interna",
-    url: "", status: "offline" as "online" | "offline", fps: 0,
+    url: "", status: "online" as "online" | "offline", fps: 30,
   });
 
+  const carregarDispositivos = useCallback(async () => {
+    try {
+      const s = await navigator.mediaDevices.getUserMedia({ video: true });
+      s.getTracks().forEach((t) => t.stop());
+      const todos = await navigator.mediaDevices.enumerateDevices();
+      const cams = todos.filter((d) => d.kind === "videoinput");
+      setDispositivos(cams);
+      setPermErro(cams.length ? null : "Nenhuma câmera encontrada neste dispositivo.");
+    } catch {
+      setPermErro("Permissão de câmera negada. Autorize o acesso no navegador.");
+    }
+  }, []);
+
+  const abrir = (v: boolean) => {
+    setOpen(v);
+    if (v) void carregarDispositivos();
+  };
+
   const submit = () => {
-    if (!form.nome.trim() || !form.url.trim()) return;
-    store.addCamera(form);
-    setForm({ nome: "", setor: "", tipo: "Entrada", url: "", status: "offline", fps: 0 });
+    if (!form.url) return;
+    const escolhida = dispositivos.find((d) => `device:${d.deviceId}` === form.url);
+    const nome = form.nome.trim() || escolhida?.label || "Câmera do notebook";
+    store.addCamera({ ...form, nome });
+    setForm({ nome: "", setor: "", tipo: "Entrada", url: "", status: "online", fps: 30 });
     setOpen(false);
   };
 
   return (
     <AppShell>
-      <PageHeader title="Câmeras com IA (YOLOv4)" description="Streams RTSP/HTTP processados pelo Raspberry Pi">
-        <Dialog open={open} onOpenChange={setOpen}>
+      <PageHeader title="Câmeras com IA" description="Câmeras conectadas ao seu computador (webcam / USB)">
+        <Dialog open={open} onOpenChange={abrir}>
           <DialogTrigger asChild>
             <Button size="sm"><Plus className="w-4 h-4 mr-2" />Nova câmera</Button>
           </DialogTrigger>
           <DialogContent>
-            <DialogHeader><DialogTitle>Cadastrar câmera</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>Adicionar câmera</DialogTitle></DialogHeader>
             <div className="space-y-3">
-              <div><Label>Nome</Label><Input value={form.nome} onChange={e => setForm({ ...form, nome: e.target.value })} placeholder="Ex.: Entrada Forno A" /></div>
+              <div>
+                <Label>Câmera conectada</Label>
+                <Select value={form.url} onValueChange={v => setForm({ ...form, url: v })}>
+                  <SelectTrigger><SelectValue placeholder="Selecione a câmera" /></SelectTrigger>
+                  <SelectContent>
+                    {dispositivos.map((d, i) => (
+                      <SelectItem key={d.deviceId || i} value={`device:${d.deviceId}`}>
+                        {d.label || `Câmera ${i + 1}`}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <div className="flex items-center gap-2 mt-1">
+                  <p className="text-[11px] text-muted-foreground flex-1">
+                    {permErro ?? "Detectadas automaticamente do seu notebook — sem IP ou configuração."}
+                  </p>
+                  <Button size="sm" variant="ghost" onClick={() => void carregarDispositivos()}>Atualizar</Button>
+                </div>
+              </div>
+              <div><Label>Nome (opcional)</Label><Input value={form.nome} onChange={e => setForm({ ...form, nome: e.target.value })} placeholder="Ex.: Entrada Forno A" /></div>
               <div><Label>Setor</Label><Input value={form.setor} onChange={e => setForm({ ...form, setor: e.target.value })} /></div>
               <div>
                 <Label>Tipo</Label>
@@ -175,27 +218,22 @@ function Cameras() {
                   </SelectContent>
                 </Select>
               </div>
-              <div>
-                <Label>URL do stream</Label>
-                <Input value={form.url} onChange={e => setForm({ ...form, url: e.target.value })}
-                  placeholder="rtsp://raspberrypi.local:8554/cam1" />
-                <p className="text-[11px] text-muted-foreground mt-1">RTSP, HTTP-MJPEG ou WebRTC vindo do Raspberry Pi.</p>
-              </div>
             </div>
             <DialogFooter>
               <Button variant="secondary" onClick={() => setOpen(false)}>Cancelar</Button>
-              <Button onClick={submit}>Salvar</Button>
+              <Button onClick={submit} disabled={!form.url}>Salvar</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
       </PageHeader>
 
+
       {cameras.length === 0 ? (
         <EmptyState
           icon={CamIcon}
           title="Nenhuma câmera cadastrada"
-          description="Cadastre as câmeras conectadas ao seu Raspberry Pi 4 (RTSP/HTTP). A IA YOLOv4 processa os frames localmente e envia eventos para este painel."
-          action={<Button onClick={() => setOpen(true)}><Plus className="w-4 h-4 mr-2" />Cadastrar primeira câmera</Button>}
+          description="Escolha uma das câmeras conectadas ao seu notebook (webcam ou USB). A IA analisa os frames direto do navegador e envia as ocorrências para o painel."
+          action={<Button onClick={() => abrir(true)}><Plus className="w-4 h-4 mr-2" />Adicionar câmera</Button>}
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
