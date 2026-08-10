@@ -178,6 +178,46 @@ function Dashboard() {
         </div>
       </div>
 
+      {deteccoes.length > 0 && (
+        <Card className="p-5 bg-card border-border mt-6">
+          <div className="flex items-center justify-between mb-4">
+            <p className="font-medium flex items-center gap-2">
+              <ScanEye className="w-4 h-4 text-primary" /> Detecções da IA ao vivo
+            </p>
+            <Link to="/deteccoes" className="text-xs text-primary hover:underline">Ver tudo</Link>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {deteccoes.map(d => (
+              <div key={d.id} className="rounded-lg border border-border overflow-hidden bg-secondary/40">
+                <div className="aspect-video bg-secondary flex items-center justify-center">
+                  {d.frame_url ? (
+                    <img src={d.frame_url} alt={`Frame da câmera ${d.camera}`} loading="lazy"
+                      className="w-full h-full object-cover" />
+                  ) : <ScanEye className="w-8 h-8 text-muted-foreground" />}
+                </div>
+                <div className="p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs font-medium truncate">{d.camera}{d.setor ? ` · ${d.setor}` : ""}</p>
+                    <Badge className={d.validacao === "Bloqueado"
+                      ? "bg-destructive/15 text-destructive border-destructive/30 hover:bg-destructive/15"
+                      : "bg-success/15 text-success border-success/30 hover:bg-success/15"}>
+                      {d.validacao}
+                    </Badge>
+                  </div>
+                  {d.epis_faltando.length > 0 && (
+                    <p className="text-[11px] text-destructive mt-1">Faltando: {d.epis_faltando.join(", ")}</p>
+                  )}
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    {new Date(d.ocorreu_em).toLocaleString("pt-BR")}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
+
       {ocorrencias.length > 0 && (
         <Card className="p-5 bg-card border-border mt-6">
           <p className="font-medium mb-4">Últimas ocorrências</p>
