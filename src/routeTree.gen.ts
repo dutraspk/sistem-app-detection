@@ -14,9 +14,11 @@ import { Route as OcorrenciasRouteImport } from './routes/ocorrencias'
 import { Route as NotificacoesRouteImport } from './routes/notificacoes'
 import { Route as FuncionariosRouteImport } from './routes/funcionarios'
 import { Route as EpisRouteImport } from './routes/epis'
+import { Route as DeteccoesRouteImport } from './routes/deteccoes'
 import { Route as CamerasRouteImport } from './routes/cameras'
 import { Route as AcessosRouteImport } from './routes/acessos'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiPublicEventosRouteImport } from './routes/api/public/eventos'
 
 const UsuariosRoute = UsuariosRouteImport.update({
   id: '/usuarios',
@@ -43,6 +45,11 @@ const EpisRoute = EpisRouteImport.update({
   path: '/epis',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DeteccoesRoute = DeteccoesRouteImport.update({
+  id: '/deteccoes',
+  path: '/deteccoes',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CamerasRoute = CamerasRouteImport.update({
   id: '/cameras',
   path: '/cameras',
@@ -58,37 +65,48 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicEventosRoute = ApiPublicEventosRouteImport.update({
+  id: '/api/public/eventos',
+  path: '/api/public/eventos',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/acessos': typeof AcessosRoute
   '/cameras': typeof CamerasRoute
+  '/deteccoes': typeof DeteccoesRoute
   '/epis': typeof EpisRoute
   '/funcionarios': typeof FuncionariosRoute
   '/notificacoes': typeof NotificacoesRoute
   '/ocorrencias': typeof OcorrenciasRoute
   '/usuarios': typeof UsuariosRoute
+  '/api/public/eventos': typeof ApiPublicEventosRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/acessos': typeof AcessosRoute
   '/cameras': typeof CamerasRoute
+  '/deteccoes': typeof DeteccoesRoute
   '/epis': typeof EpisRoute
   '/funcionarios': typeof FuncionariosRoute
   '/notificacoes': typeof NotificacoesRoute
   '/ocorrencias': typeof OcorrenciasRoute
   '/usuarios': typeof UsuariosRoute
+  '/api/public/eventos': typeof ApiPublicEventosRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/acessos': typeof AcessosRoute
   '/cameras': typeof CamerasRoute
+  '/deteccoes': typeof DeteccoesRoute
   '/epis': typeof EpisRoute
   '/funcionarios': typeof FuncionariosRoute
   '/notificacoes': typeof NotificacoesRoute
   '/ocorrencias': typeof OcorrenciasRoute
   '/usuarios': typeof UsuariosRoute
+  '/api/public/eventos': typeof ApiPublicEventosRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -96,42 +114,50 @@ export interface FileRouteTypes {
     | '/'
     | '/acessos'
     | '/cameras'
+    | '/deteccoes'
     | '/epis'
     | '/funcionarios'
     | '/notificacoes'
     | '/ocorrencias'
     | '/usuarios'
+    | '/api/public/eventos'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/acessos'
     | '/cameras'
+    | '/deteccoes'
     | '/epis'
     | '/funcionarios'
     | '/notificacoes'
     | '/ocorrencias'
     | '/usuarios'
+    | '/api/public/eventos'
   id:
     | '__root__'
     | '/'
     | '/acessos'
     | '/cameras'
+    | '/deteccoes'
     | '/epis'
     | '/funcionarios'
     | '/notificacoes'
     | '/ocorrencias'
     | '/usuarios'
+    | '/api/public/eventos'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AcessosRoute: typeof AcessosRoute
   CamerasRoute: typeof CamerasRoute
+  DeteccoesRoute: typeof DeteccoesRoute
   EpisRoute: typeof EpisRoute
   FuncionariosRoute: typeof FuncionariosRoute
   NotificacoesRoute: typeof NotificacoesRoute
   OcorrenciasRoute: typeof OcorrenciasRoute
   UsuariosRoute: typeof UsuariosRoute
+  ApiPublicEventosRoute: typeof ApiPublicEventosRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -171,6 +197,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EpisRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/deteccoes': {
+      id: '/deteccoes'
+      path: '/deteccoes'
+      fullPath: '/deteccoes'
+      preLoaderRoute: typeof DeteccoesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/cameras': {
       id: '/cameras'
       path: '/cameras'
@@ -192,6 +225,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/eventos': {
+      id: '/api/public/eventos'
+      path: '/api/public/eventos'
+      fullPath: '/api/public/eventos'
+      preLoaderRoute: typeof ApiPublicEventosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -199,22 +239,14 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AcessosRoute: AcessosRoute,
   CamerasRoute: CamerasRoute,
+  DeteccoesRoute: DeteccoesRoute,
   EpisRoute: EpisRoute,
   FuncionariosRoute: FuncionariosRoute,
   NotificacoesRoute: NotificacoesRoute,
   OcorrenciasRoute: OcorrenciasRoute,
   UsuariosRoute: UsuariosRoute,
+  ApiPublicEventosRoute: ApiPublicEventosRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
