@@ -89,12 +89,12 @@ function Cameras() {
                     <>
                       <iframe
                         src={c.url}
-                        width="100%"
-                        height="100%"
                         title={c.nome}
-                        allow="autoplay; fullscreen; camera; microphone"
+                        style={{ width: "100%", height: "100%", border: "none" }}
+                        allow="autoplay; fullscreen; picture-in-picture"
+                        sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
                         allowFullScreen
-                        className="absolute inset-0 w-full h-full border-0 bg-black"
+                        className="absolute inset-0 bg-black"
                       />
                       <div className="absolute top-3 left-3 z-10 inline-flex items-center gap-1.5 text-[10px] uppercase tracking-wider px-2 py-1 bg-destructive/90 text-destructive-foreground rounded pointer-events-none">
                         <span className="w-1.5 h-1.5 rounded-full bg-white live-dot" />Rec
