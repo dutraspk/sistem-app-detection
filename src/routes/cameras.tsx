@@ -230,8 +230,8 @@ function Cameras() {
         <EmptyState
           icon={CamIcon}
           title="Nenhuma câmera cadastrada"
-          description="Cadastre as câmeras conectadas ao seu Raspberry Pi 4 (RTSP/HTTP). A IA YOLOv4 processa os frames localmente e envia eventos para este painel."
-          action={<Button onClick={() => setOpen(true)}><Plus className="w-4 h-4 mr-2" />Cadastrar primeira câmera</Button>}
+          description="Escolha uma das câmeras conectadas ao seu notebook (webcam ou USB). A IA analisa os frames direto do navegador e envia as ocorrências para o painel."
+          action={<Button onClick={() => abrir(true)}><Plus className="w-4 h-4 mr-2" />Adicionar câmera</Button>}
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
