@@ -115,6 +115,7 @@ function Dashboard() {
   const ocorrencias = useStore("ocorrencias");
   const cameras = useStore("cameras");
   const usuarios = useStore("usuarios");
+  const deteccoes = useDeteccoesLive(6);
 
   const ocorrenciasHoje = ocorrencias.filter(o => Date.now() - new Date(o.data).getTime() < 86400000).length;
   const episVencer = epis.filter(e => {
