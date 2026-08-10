@@ -87,8 +87,8 @@ function CameraCard({ c }: { c: Camera }) {
 
   return (
     <Card className="bg-card border-border overflow-hidden">
-      <div className="relative aspect-video bg-gradient-to-br from-secondary via-card to-background flex items-center justify-center">
-        {c.url ? (
+      <div ref={boxRef} className="relative aspect-video bg-gradient-to-br from-secondary via-card to-background flex items-center justify-center">
+        {c.url && ligada ? (
           <>
             <CameraPlayer
               streamUrl={c.url}
@@ -117,14 +117,33 @@ function CameraCard({ c }: { c: Camera }) {
               <span className="font-mono">{c.id}</span>
               <span>{c.fps} fps</span>
             </div>
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={() => void alternarTela()}
+              className="absolute bottom-8 right-3 z-20 h-7 px-2 text-[11px]"
+            >
+              {fullscreen ? <Minimize2 className="w-3.5 h-3.5 mr-1" /> : <Maximize2 className="w-3.5 h-3.5 mr-1" />}
+              {fullscreen ? "Sair da tela cheia" : "Tela cheia"}
+            </Button>
           </>
         ) : (
           <div className="text-center">
-            <WifiOff className="w-10 h-10 text-destructive mx-auto" />
-            <p className="text-xs text-destructive mt-2">Aguardando conexão</p>
+            {c.url ? (
+              <>
+                <CameraOff className="w-10 h-10 text-muted-foreground mx-auto" />
+                <p className="text-xs text-muted-foreground mt-2">Câmera desligada</p>
+              </>
+            ) : (
+              <>
+                <WifiOff className="w-10 h-10 text-destructive mx-auto" />
+                <p className="text-xs text-destructive mt-2">Aguardando conexão</p>
+              </>
+            )}
           </div>
         )}
       </div>
+
       <div className="p-4">
         <div className="flex items-center justify-between">
           <p className="font-medium">{c.nome}</p>
