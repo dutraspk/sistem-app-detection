@@ -92,8 +92,13 @@ function CameraCard({ c }: { c: Camera }) {
           <div>
             <p className="text-xs font-medium">Fiscalização por IA</p>
             <p className="text-[11px] text-muted-foreground">
-              {ia ? (ultimo ?? "Analisando frames a cada 8s…") : "Desligada"}
+              {!ia
+                ? "Desligada"
+                : status.online
+                  ? "IA Online — enviando ~5 frames/s ao YOLO local"
+                  : (status.erro ?? "Conectando ao servidor YOLO local…")}
             </p>
+
           </div>
           <Switch checked={ia} onCheckedChange={setIa} disabled={!c.url} />
         </div>
