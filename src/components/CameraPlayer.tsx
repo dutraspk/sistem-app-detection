@@ -1,7 +1,17 @@
 import { useEffect, useRef } from "react";
 
-export const CameraPlayer = ({ streamUrl }: { streamUrl: string }) => {
+type Props = {
+  streamUrl: string;
+  /** Quando definido, captura frames periodicamente para análise da IA. */
+  onFrame?: (base64: string) => void;
+  /** Intervalo entre capturas, em segundos. */
+  intervaloSegundos?: number;
+};
+
+export const CameraPlayer = ({ streamUrl, onFrame, intervaloSegundos = 8 }: Props) => {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const onFrameRef = useRef(onFrame);
+  onFrameRef.current = onFrame;
 
   useEffect(() => {
     if (!videoRef.current || !streamUrl) return;
@@ -37,6 +47,31 @@ export const CameraPlayer = ({ streamUrl }: { streamUrl: string }) => {
       pc.close();
     };
   }, [streamUrl]);
+
+  // Captura de frames para a IA
+  useEffect(() => {
+    if (!onFrame) return;
+    const canvas = document.createElement("canvas");
+
+    const capturar = () => {
+      const video = videoRef.current;
+      if (!video || !video.videoWidth) return;
+      const escala = Math.min(1, 640 / video.videoWidth);
+      canvas.width = Math.round(video.videoWidth * escala);
+      canvas.height = Math.round(video.videoHeight * escala);
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      onFrameRef.current?.(canvas.toDataURL("image/jpeg", 0.7));
+    };
+
+    const t = setInterval(capturar, Math.max(3, intervaloSegundos) * 1000);
+    const primeira = setTimeout(capturar, 2500);
+    return () => {
+      clearInterval(t);
+      clearTimeout(primeira);
+    };
+  }, [onFrame, intervaloSegundos]);
 
   return (
     <video
