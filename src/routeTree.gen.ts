@@ -17,6 +17,7 @@ import { Route as EpisRouteImport } from './routes/epis'
 import { Route as CamerasRouteImport } from './routes/cameras'
 import { Route as AcessosRouteImport } from './routes/acessos'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiPublicEventosRouteImport } from './routes/api/public/eventos'
 
 const UsuariosRoute = UsuariosRouteImport.update({
   id: '/usuarios',
@@ -58,6 +59,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicEventosRoute = ApiPublicEventosRouteImport.update({
+  id: '/api/public/eventos',
+  path: '/api/public/eventos',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -68,6 +74,7 @@ export interface FileRoutesByFullPath {
   '/notificacoes': typeof NotificacoesRoute
   '/ocorrencias': typeof OcorrenciasRoute
   '/usuarios': typeof UsuariosRoute
+  '/api/public/eventos': typeof ApiPublicEventosRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -78,6 +85,7 @@ export interface FileRoutesByTo {
   '/notificacoes': typeof NotificacoesRoute
   '/ocorrencias': typeof OcorrenciasRoute
   '/usuarios': typeof UsuariosRoute
+  '/api/public/eventos': typeof ApiPublicEventosRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -89,6 +97,7 @@ export interface FileRoutesById {
   '/notificacoes': typeof NotificacoesRoute
   '/ocorrencias': typeof OcorrenciasRoute
   '/usuarios': typeof UsuariosRoute
+  '/api/public/eventos': typeof ApiPublicEventosRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -101,6 +110,7 @@ export interface FileRouteTypes {
     | '/notificacoes'
     | '/ocorrencias'
     | '/usuarios'
+    | '/api/public/eventos'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -111,6 +121,7 @@ export interface FileRouteTypes {
     | '/notificacoes'
     | '/ocorrencias'
     | '/usuarios'
+    | '/api/public/eventos'
   id:
     | '__root__'
     | '/'
@@ -121,6 +132,7 @@ export interface FileRouteTypes {
     | '/notificacoes'
     | '/ocorrencias'
     | '/usuarios'
+    | '/api/public/eventos'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -132,6 +144,7 @@ export interface RootRouteChildren {
   NotificacoesRoute: typeof NotificacoesRoute
   OcorrenciasRoute: typeof OcorrenciasRoute
   UsuariosRoute: typeof UsuariosRoute
+  ApiPublicEventosRoute: typeof ApiPublicEventosRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -192,6 +205,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/eventos': {
+      id: '/api/public/eventos'
+      path: '/api/public/eventos'
+      fullPath: '/api/public/eventos'
+      preLoaderRoute: typeof ApiPublicEventosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -204,17 +224,8 @@ const rootRouteChildren: RootRouteChildren = {
   NotificacoesRoute: NotificacoesRoute,
   OcorrenciasRoute: OcorrenciasRoute,
   UsuariosRoute: UsuariosRoute,
+  ApiPublicEventosRoute: ApiPublicEventosRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
