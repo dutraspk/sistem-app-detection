@@ -143,6 +143,20 @@ export const CameraPlayer = ({ streamUrl, yoloAtivo = false, fps = 5, onStatus }
           signal: ac.signal,
         });
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
+
+        const lista = (v: string | null) =>
+          (v ?? "")
+            .split(",")
+            .map((s) => s.trim().toLowerCase())
+            .filter(Boolean);
+
+        const detectados = lista(
+          r.headers.get("x-detections") ?? r.headers.get("x-epis-detectados"),
+        );
+        const faltando = lista(
+          r.headers.get("x-missing") ?? r.headers.get("x-epis-faltando"),
+        );
+
         const out = await r.blob();
         if (!vivo) return;
         const url = URL.createObjectURL(out);
@@ -150,6 +164,10 @@ export const CameraPlayer = ({ streamUrl, yoloAtivo = false, fps = 5, onStatus }
         objectUrl = url;
         setProcessada(url);
         onStatusRef.current?.({ online: true, erro: null });
+        if (detectados.length || faltando.length) {
+          onDeteccaoRef.current?.({ detectados, faltando });
+        }
+
       } catch (e) {
         if (vivo && (e as Error).name !== "AbortError") {
           onStatusRef.current?.({
