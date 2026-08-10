@@ -85,13 +85,21 @@ function Cameras() {
             return (
               <Card key={c.id} className="bg-card border-border overflow-hidden">
                 <div className="relative aspect-video bg-gradient-to-br from-secondary via-card to-background flex items-center justify-center">
-                  {on ? (
+                  {c.url ? (
                     <>
-                      <CamIcon className="w-12 h-12 text-primary/40" />
-                      <div className="absolute top-3 left-3 inline-flex items-center gap-1.5 text-[10px] uppercase tracking-wider px-2 py-1 bg-destructive/90 text-destructive-foreground rounded">
+                      <iframe
+                        src={c.url}
+                        width="100%"
+                        height="100%"
+                        title={c.nome}
+                        allow="autoplay; fullscreen; camera; microphone"
+                        allowFullScreen
+                        className="absolute inset-0 w-full h-full border-0 bg-black"
+                      />
+                      <div className="absolute top-3 left-3 z-10 inline-flex items-center gap-1.5 text-[10px] uppercase tracking-wider px-2 py-1 bg-destructive/90 text-destructive-foreground rounded pointer-events-none">
                         <span className="w-1.5 h-1.5 rounded-full bg-white live-dot" />Rec
                       </div>
-                      <div className="absolute bottom-3 left-3 right-3 flex items-center justify-between text-[10px] text-white/70">
+                      <div className="absolute bottom-3 left-3 right-3 z-10 flex items-center justify-between text-[10px] text-white/70 pointer-events-none">
                         <span className="font-mono">{c.id}</span>
                         <span>{c.fps} fps</span>
                       </div>
