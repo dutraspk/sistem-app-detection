@@ -164,6 +164,17 @@ function CameraCard({ c }: { c: Camera }) {
 
         <div className="flex items-center justify-between mt-3 pt-3 border-t border-border">
           <div>
+            <p className="text-xs font-medium">Câmera: {ligada ? "ON" : "OFF"}</p>
+            <p className="text-[11px] text-muted-foreground">
+              {ligada ? "Webcam ativa e visível" : "Webcam liberada — clique para reativar"}
+            </p>
+          </div>
+          <Switch checked={ligada} onCheckedChange={setLigada} disabled={!c.url} />
+        </div>
+
+        <div className="flex items-center justify-between mt-3 pt-3 border-t border-border">
+
+          <div>
             <p className="text-xs font-medium">Fiscalização por IA</p>
             <p className="text-[11px] text-muted-foreground">
               {!ia
