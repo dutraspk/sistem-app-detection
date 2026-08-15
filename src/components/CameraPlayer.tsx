@@ -249,12 +249,16 @@ export const CameraPlayer = ({
         autoPlay
         playsInline
         muted
-        style={{ width: "100%", height: "100%", objectFit: "cover" }}
-        className={`absolute inset-0 bg-black ${
+        style={
           grandeIa
-            ? "z-20 !w-1/3 !h-auto max-w-[180px] inset-auto bottom-2 right-2 rounded-md border border-border/60 shadow-lg cursor-pointer"
-            : ""
-        }`}
+            ? { objectFit: "cover" }
+            : { width: "100%", height: "100%", objectFit: "cover" }
+        }
+        className={
+          grandeIa
+            ? "absolute bottom-2 right-2 z-20 w-1/3 max-w-[180px] aspect-video bg-black rounded-md border border-border/60 shadow-lg cursor-pointer"
+            : "absolute inset-0 bg-black"
+        }
         onClick={grandeIa ? onAlternarPrincipal : undefined}
       />
       {mostrarIa && (
