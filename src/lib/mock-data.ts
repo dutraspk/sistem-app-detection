@@ -52,6 +52,7 @@ export interface Camera {
   nome: string;
   setor: string;
   tipo: "Entrada" | "Interna";
+  area?: "Risco" | "Segura";
   url: string;       // RTSP/HTTP do stream (ex.: rtsp://raspberrypi.local:8554/cam)
   status: "online" | "offline";
   fps: number;

@@ -11,6 +11,12 @@ type Props = {
   onStatus?: (s: { online: boolean; erro: string | null }) => void;
   /** Chamado quando o servidor YOLO informa EPIs detectados/faltando. */
   onDeteccao?: (d: { detectados: string[]; faltando: string[] }) => void;
+  /** Falha ao abrir/manter a câmera. */
+  onCameraErro?: (msg: string) => void;
+  /** Quando true, a imagem processada pela IA fica em tela grande. */
+  iaPrincipal?: boolean;
+  /** Clique na miniatura para alternar qual fica em tela grande. */
+  onAlternarPrincipal?: () => void;
 };
 
 export const CameraPlayer = ({
@@ -19,6 +25,9 @@ export const CameraPlayer = ({
   fps = 5,
   onStatus,
   onDeteccao,
+  onCameraErro,
+  iaPrincipal = false,
+  onAlternarPrincipal,
 }: Props) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [processada, setProcessada] = useState<string | null>(null);
@@ -26,6 +35,8 @@ export const CameraPlayer = ({
   onStatusRef.current = onStatus;
   const onDeteccaoRef = useRef(onDeteccao);
   onDeteccaoRef.current = onDeteccao;
+  const onCameraErroRef = useRef(onCameraErro);
+  onCameraErroRef.current = onCameraErro;
 
 
   useEffect(() => {
@@ -43,6 +54,11 @@ export const CameraPlayer = ({
           return;
         }
         stream = s;
+        s.getVideoTracks().forEach((t) => {
+          t.onended = () => {
+            if (ativo) onCameraErroRef.current?.("Transmissão da câmera interrompida");
+          };
+        });
         const v = videoRef.current;
         if (!v) return;
         v.srcObject = s;
@@ -61,6 +77,14 @@ export const CameraPlayer = ({
           anexar(s);
         } catch (e) {
           console.error("Falha ao abrir a webcam:", e);
+          const nome = e instanceof Error ? e.name : "erro desconhecido";
+          onCameraErroRef.current?.(
+            nome === "NotAllowedError"
+              ? "Permissão de câmera negada"
+              : nome === "NotFoundError"
+                ? "Câmera não encontrada / desconectada"
+                : `Falha na câmera (${nome})`,
+          );
         }
       })();
 
@@ -220,6 +244,9 @@ export const CameraPlayer = ({
     };
   }, [yoloAtivo, fps]);
 
+  const mostrarIa = yoloAtivo && !!processada;
+  const grandeIa = mostrarIa && iaPrincipal;
+
   return (
     <>
       <video
@@ -227,14 +254,28 @@ export const CameraPlayer = ({
         autoPlay
         playsInline
         muted
-        style={{ width: "100%", height: "100%", objectFit: "cover" }}
-        className="absolute inset-0 bg-black"
+        style={
+          grandeIa
+            ? { objectFit: "cover" }
+            : { width: "100%", height: "100%", objectFit: "cover" }
+        }
+        className={
+          grandeIa
+            ? "absolute bottom-2 right-2 z-20 w-1/3 max-w-[180px] aspect-video bg-black rounded-md border border-border/60 shadow-lg cursor-pointer"
+            : "absolute inset-0 bg-black"
+        }
+        onClick={grandeIa ? onAlternarPrincipal : undefined}
       />
-      {yoloAtivo && processada && (
+      {mostrarIa && (
         <img
-          src={processada}
+          src={processada!}
           alt="Frame com detecções do YOLO"
-          className="absolute bottom-2 right-2 w-1/3 max-w-[180px] rounded-md border border-border/60 shadow-lg pointer-events-none"
+          onClick={grandeIa ? undefined : onAlternarPrincipal}
+          className={
+            grandeIa
+              ? "absolute inset-0 w-full h-full object-cover"
+              : "absolute bottom-2 right-2 z-20 w-1/3 max-w-[180px] rounded-md border border-border/60 shadow-lg cursor-pointer"
+          }
         />
       )}
     </>
