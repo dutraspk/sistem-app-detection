@@ -72,6 +72,14 @@ export const CameraPlayer = ({
           anexar(s);
         } catch (e) {
           console.error("Falha ao abrir a webcam:", e);
+          const nome = e instanceof Error ? e.name : "erro desconhecido";
+          onCameraErroRef.current?.(
+            nome === "NotAllowedError"
+              ? "Permissão de câmera negada"
+              : nome === "NotFoundError"
+                ? "Câmera não encontrada / desconectada"
+                : `Falha na câmera (${nome})`,
+          );
         }
       })();
 
@@ -231,6 +239,9 @@ export const CameraPlayer = ({
     };
   }, [yoloAtivo, fps]);
 
+  const mostrarIa = yoloAtivo && !!processada;
+  const grandeIa = mostrarIa && iaPrincipal;
+
   return (
     <>
       <video
@@ -239,13 +250,23 @@ export const CameraPlayer = ({
         playsInline
         muted
         style={{ width: "100%", height: "100%", objectFit: "cover" }}
-        className="absolute inset-0 bg-black"
+        className={`absolute inset-0 bg-black ${
+          grandeIa
+            ? "z-20 !w-1/3 !h-auto max-w-[180px] inset-auto bottom-2 right-2 rounded-md border border-border/60 shadow-lg cursor-pointer"
+            : ""
+        }`}
+        onClick={grandeIa ? onAlternarPrincipal : undefined}
       />
-      {yoloAtivo && processada && (
+      {mostrarIa && (
         <img
-          src={processada}
+          src={processada!}
           alt="Frame com detecções do YOLO"
-          className="absolute bottom-2 right-2 w-1/3 max-w-[180px] rounded-md border border-border/60 shadow-lg pointer-events-none"
+          onClick={grandeIa ? undefined : onAlternarPrincipal}
+          className={
+            grandeIa
+              ? "absolute inset-0 w-full h-full object-cover"
+              : "absolute bottom-2 right-2 z-20 w-1/3 max-w-[180px] rounded-md border border-border/60 shadow-lg cursor-pointer"
+          }
         />
       )}
     </>
