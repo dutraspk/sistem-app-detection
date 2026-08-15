@@ -35,6 +35,8 @@ export const CameraPlayer = ({
   onStatusRef.current = onStatus;
   const onDeteccaoRef = useRef(onDeteccao);
   onDeteccaoRef.current = onDeteccao;
+  const onCameraErroRef = useRef(onCameraErro);
+  onCameraErroRef.current = onCameraErro;
 
 
   useEffect(() => {
