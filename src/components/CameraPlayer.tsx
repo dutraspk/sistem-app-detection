@@ -54,6 +54,11 @@ export const CameraPlayer = ({
           return;
         }
         stream = s;
+        s.getVideoTracks().forEach((t) => {
+          t.onended = () => {
+            if (ativo) onCameraErroRef.current?.("Transmissão da câmera interrompida");
+          };
+        });
         const v = videoRef.current;
         if (!v) return;
         v.srcObject = s;
