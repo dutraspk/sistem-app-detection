@@ -14,7 +14,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Camera as CamIcon, Wifi, WifiOff, Plus, Trash2, ScanEye, Loader2, Maximize2, Minimize2, CameraOff } from "lucide-react";
+import { Camera as CamIcon, Wifi, WifiOff, Plus, Trash2, ScanEye, Loader2, Maximize2, Minimize2, CameraOff, Repeat2, ShieldAlert } from "lucide-react";
 import { useStore, store } from "@/lib/store";
 import { CameraPlayer } from "@/components/CameraPlayer";
 import { Switch } from "@/components/ui/switch";
@@ -36,7 +36,10 @@ function CameraCard({ c }: { c: Camera }) {
   const ultimaOcorrencia = useRef(0);
   const [ligada, setLigada] = useState(true);
   const [fullscreen, setFullscreen] = useState(false);
+  const [iaPrincipal, setIaPrincipal] = useState(false);
   const boxRef = useRef<HTMLDivElement>(null);
+  const iaOnlineRef = useRef<boolean | null>(null);
+  const risco = c.area === "Risco";
 
   useEffect(() => {
     const onFs = () => setFullscreen(document.fullscreenElement === boxRef.current);
@@ -55,7 +58,33 @@ function CameraCard({ c }: { c: Camera }) {
 
   const onStatus = useCallback((s: { online: boolean; erro: string | null }) => {
     setStatus(s);
-  }, []);
+    if (iaOnlineRef.current !== null && iaOnlineRef.current !== s.online) {
+      if (!s.online) {
+        store.addNotificacao({
+          tipo: "Alerta",
+          titulo: `IA (YOLO) sem conexão — ${c.nome}`,
+          descricao: s.erro ?? "Conexão com o servidor YOLO local interrompida.",
+        });
+        toast.error(`IA offline em ${c.nome}`);
+      } else {
+        store.addNotificacao({
+          tipo: "Info",
+          titulo: `IA (YOLO) reconectada — ${c.nome}`,
+          descricao: "O servidor YOLO local voltou a responder.",
+        });
+      }
+    }
+    iaOnlineRef.current = s.online;
+  }, [c.nome]);
+
+  const onCameraErro = useCallback((msg: string) => {
+    store.addNotificacao({
+      tipo: "Crítico",
+      titulo: `Falha na câmera — ${c.nome}`,
+      descricao: `${msg}. Verifique a conexão do dispositivo.`,
+    });
+    toast.error(`Falha na câmera ${c.nome}: ${msg}`);
+  }, [c.nome]);
 
   const onDeteccao = useCallback(
     ({ faltando }: { detectados: string[]; faltando: string[] }) => {
@@ -65,9 +94,10 @@ function CameraCard({ c }: { c: Camera }) {
       }
       setUltimo(`Bloqueado — faltando ${faltando.join(", ")}`);
 
-      // evita spam: no máximo 1 ocorrência por minuto por câmera
+      const emRisco = c.area === "Risco";
       const agora = Date.now();
-      if (agora - ultimaOcorrencia.current < 60_000) return;
+      // Área de risco: registro obrigatório (sem trava). Demais: 1 por minuto.
+      if (!emRisco && agora - ultimaOcorrencia.current < 60_000) return;
       ultimaOcorrencia.current = agora;
 
       toast.error(`${c.nome}: EPI faltando (${faltando.join(", ")})`);
@@ -76,13 +106,22 @@ function CameraCard({ c }: { c: Camera }) {
         trabalhador: "Não identificado",
         local: c.setor || c.nome,
         camera: c.nome,
-        gravidade: "Alta",
+        gravidade: emRisco ? "Crítica" : "Alta",
         data: new Date().toISOString(),
         status: "Aberta",
-        observacoes: `Detectado automaticamente pela IA local (YOLO) na câmera ${c.nome}.`,
+        observacoes: emRisco
+          ? `ÁREA DE RISCO — registro obrigatório. Detectado pela IA local (YOLO) na câmera ${c.nome}. EPIs faltando: ${faltando.join(", ")}.`
+          : `Detectado automaticamente pela IA local (YOLO) na câmera ${c.nome}.`,
       });
+      if (emRisco) {
+        store.addNotificacao({
+          tipo: "Crítico",
+          titulo: `Área de risco — EPI faltando em ${c.nome}`,
+          descricao: `Ocorrência obrigatória registrada: ${faltando.join(", ")}.`,
+        });
+      }
     },
-    [c.nome, c.setor],
+    [c.nome, c.setor, c.area],
   );
 
   return (
@@ -96,6 +135,9 @@ function CameraCard({ c }: { c: Camera }) {
               fps={5}
               onStatus={onStatus}
               onDeteccao={onDeteccao}
+              onCameraErro={onCameraErro}
+              iaPrincipal={iaPrincipal}
+              onAlternarPrincipal={() => setIaPrincipal((v) => !v)}
             />
 
             <div className="absolute top-3 left-3 z-10 inline-flex items-center gap-1.5 text-[10px] uppercase tracking-wider px-2 py-1 bg-destructive/90 text-destructive-foreground rounded pointer-events-none">
@@ -126,6 +168,17 @@ function CameraCard({ c }: { c: Camera }) {
               {fullscreen ? <Minimize2 className="w-3.5 h-3.5 mr-1" /> : <Maximize2 className="w-3.5 h-3.5 mr-1" />}
               {fullscreen ? "Sair da tela cheia" : "Tela cheia"}
             </Button>
+            {ia && (
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={() => setIaPrincipal((v) => !v)}
+                className="absolute bottom-8 left-3 z-20 h-7 px-2 text-[11px]"
+              >
+                <Repeat2 className="w-3.5 h-3.5 mr-1" />
+                {iaPrincipal ? "Ver câmera" : "Ver IA em tela grande"}
+              </Button>
+            )}
           </>
         ) : (
           <div className="text-center">
@@ -157,7 +210,17 @@ function CameraCard({ c }: { c: Camera }) {
             </button>
           </div>
         </div>
-        <p className="text-xs text-muted-foreground mt-1">{c.setor} · {c.tipo}</p>
+        <div className="flex items-center gap-2 mt-1">
+          <p className="text-xs text-muted-foreground">{c.setor} · {c.tipo}</p>
+          <Badge
+            className={risco
+              ? "bg-destructive/15 text-destructive border-destructive/30 hover:bg-destructive/15"
+              : "bg-success/15 text-success border-success/30 hover:bg-success/15"}
+          >
+            {risco && <ShieldAlert className="w-3 h-3 mr-1" />}
+            {risco ? "Área de risco" : "Área segura"}
+          </Badge>
+        </div>
         <p className="text-[10px] text-muted-foreground font-mono truncate mt-1">
           {c.url.startsWith("device:") ? "Câmera local do dispositivo" : c.url}
         </p>
@@ -201,6 +264,7 @@ function Cameras() {
   const [permErro, setPermErro] = useState<string | null>(null);
   const [form, setForm] = useState({
     nome: "", setor: "", tipo: "Entrada" as "Entrada" | "Interna",
+    area: "Segura" as "Risco" | "Segura",
     url: "", status: "online" as "online" | "offline", fps: 30,
   });
 
@@ -247,7 +311,7 @@ function Cameras() {
     const escolhida = dispositivos.find((d) => `device:${d.deviceId}` === form.url);
     const nome = form.nome.trim() || escolhida?.label || "Câmera do notebook";
     store.addCamera({ ...form, nome });
-    setForm({ nome: "", setor: "", tipo: "Entrada", url: "", status: "online", fps: 30 });
+    setForm({ nome: "", setor: "", tipo: "Entrada", area: "Segura", url: "", status: "online", fps: 30 });
     setOpen(false);
   };
 
@@ -291,6 +355,19 @@ function Cameras() {
                     <SelectItem value="Interna">Interna</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+              <div>
+                <Label>Classificação da área</Label>
+                <Select value={form.area} onValueChange={v => setForm({ ...form, area: v as "Risco" | "Segura" })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Segura">Área segura</SelectItem>
+                    <SelectItem value="Risco">Área de risco</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Em área de risco, toda falta de EPI gera obrigatoriamente uma ocorrência.
+                </p>
               </div>
             </div>
             <DialogFooter>
