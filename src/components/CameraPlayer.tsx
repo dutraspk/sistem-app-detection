@@ -11,6 +11,12 @@ type Props = {
   onStatus?: (s: { online: boolean; erro: string | null }) => void;
   /** Chamado quando o servidor YOLO informa EPIs detectados/faltando. */
   onDeteccao?: (d: { detectados: string[]; faltando: string[] }) => void;
+  /** Falha ao abrir/manter a câmera. */
+  onCameraErro?: (msg: string) => void;
+  /** Quando true, a imagem processada pela IA fica em tela grande. */
+  iaPrincipal?: boolean;
+  /** Clique na miniatura para alternar qual fica em tela grande. */
+  onAlternarPrincipal?: () => void;
 };
 
 export const CameraPlayer = ({
@@ -19,6 +25,9 @@ export const CameraPlayer = ({
   fps = 5,
   onStatus,
   onDeteccao,
+  onCameraErro,
+  iaPrincipal = false,
+  onAlternarPrincipal,
 }: Props) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [processada, setProcessada] = useState<string | null>(null);
