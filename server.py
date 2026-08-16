@@ -92,7 +92,7 @@ def _carregar_ultralytics() -> bool:
         return False
 
     caminho = pts[0]
-    print(f"[INFO] Carregando modelo Ultralytics: {custo}")
+    print(f"[INFO] Carregando modelo Ultralytics: {caminho}")
     modelo = YOLO(str(caminho))
     classes = list(modelo.names.values()) if hasattr(modelo, "names") else _carregar_classes()
     modelo_tipo = "ultralytics"
