@@ -136,9 +136,9 @@ curl -X POST https://SEU-APP.lovable.app/api/public/eventos \
 
 O evento deve aparecer na página **Detecções IA** na hora.
 
-## 6. Servidor YOLO local (http://localhost:8000)
+## 6. Servidor YOLO local (https://desktop-oi01buo.tail1dea31.ts.net)
 
-O app envia ~5 frames/s para `POST /detect` (campo `file`, JPEG 640px) e mostra a
+O app envia ~5 frames/s para `POST https://desktop-oi01buo.tail1dea31.ts.net/detect` (campo `file`, JPEG 640px) e mostra a
 imagem JPEG retornada com as caixas desenhadas. Para que o app crie **ocorrências
 automáticas**, o servidor deve devolver os EPIs nos cabeçalhos da resposta:
 
