@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-export const YOLO_API_URL = "http://localhost:8000";
+export const YOLO_API_URL = "https://desktop-oi01buo.tail1dea31.ts.net";
 
 type Props = {
   streamUrl: string;
