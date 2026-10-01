@@ -111,10 +111,10 @@ export const store = {
     persist();
   },
 
-  addNotificacao(n: Omit<Notificacao, "id" | "data">) {
+  addNotificacao(n: Omit<Notificacao, "id" | "data"> & { data?: string }) {
     state = {
       ...state,
-      notificacoes: [{ ...n, id: `N-${Date.now()}`, data: new Date().toISOString() }, ...state.notificacoes],
+      notificacoes: [{ ...n, id: `N-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`, data: n.data ?? new Date().toISOString() }, ...state.notificacoes].slice(0, 200),
     };
     persist();
   },

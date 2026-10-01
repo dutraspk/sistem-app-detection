@@ -10,7 +10,9 @@ type Props = {
   fps?: number;
   onStatus?: (s: { online: boolean; erro: string | null }) => void;
   /** Chamado quando o servidor YOLO informa EPIs detectados/faltando. */
-  onDeteccao?: (d: { detectados: string[]; faltando: string[] }) => void;
+  onDeteccao?: (d: { detectados: string[]; faltando: string[]; frame?: string; ocorreuEm: string }) => void;
+  /** Intervalo fixo (ms) entre o fim de uma análise e o início da próxima. */
+  intervaloMs?: number;
   /** Falha ao abrir/manter a câmera. */
   onCameraErro?: (msg: string) => void;
   /** Quando true, a imagem processada pela IA fica em tela grande. */
@@ -23,6 +25,7 @@ export const CameraPlayer = ({
   streamUrl,
   yoloAtivo = false,
   fps = 5,
+  intervaloMs = 4500,
   onStatus,
   onDeteccao,
   onCameraErro,
@@ -165,10 +168,12 @@ export const CameraPlayer = ({
     void checarSaude();
     const healthTimer = setInterval(() => void checarSaude(), 10000);
 
+    let frameUrl: string | undefined;
     const enviar = async () => {
       if (!vivo || ocupado) return;
       const video = videoRef.current;
       if (!video || !video.videoWidth) return;
+      const ocorreuEm = new Date().toISOString();
       ocupado = true;
       const ac = new AbortController();
       controllers.add(ac);
@@ -184,6 +189,7 @@ export const CameraPlayer = ({
           canvas.toBlob(res, "image/jpeg", 0.7),
         );
         if (!blob || !vivo) return;
+        frameUrl = canvas.toDataURL("image/jpeg", 0.5);
 
         const fd = new FormData();
         fd.append("file", blob, "frame.jpg");
@@ -216,7 +222,7 @@ export const CameraPlayer = ({
         setProcessada(url);
         onStatusRef.current?.({ online: true, erro: null });
         if (detectados.length || faltando.length) {
-          onDeteccaoRef.current?.({ detectados, faltando });
+          onDeteccaoRef.current?.({ detectados, faltando, frame: frameUrl, ocorreuEm });
         }
 
       } catch (e) {
@@ -232,17 +238,25 @@ export const CameraPlayer = ({
       }
     };
 
-    const timer = setInterval(() => void enviar(), Math.max(100, 1000 / Math.max(1, fps)));
+    // Ciclo sequencial: análise → aguarda intervaloMs completos → próxima análise.
+    // Nunca há duas análises simultâneas.
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const ciclo = async () => {
+      if (!vivo) return;
+      await enviar();
+      if (vivo) timer = setTimeout(() => void ciclo(), intervaloMs);
+    };
+    timer = setTimeout(() => void ciclo(), 500);
 
     return () => {
       vivo = false;
-      clearInterval(timer);
+      clearTimeout(timer);
       clearInterval(healthTimer);
       controllers.forEach((c) => c.abort());
       if (objectUrl) URL.revokeObjectURL(objectUrl);
       setProcessada(null);
     };
-  }, [yoloAtivo, fps]);
+  }, [yoloAtivo, intervaloMs]);
 
   const mostrarIa = yoloAtivo && !!processada;
   const grandeIa = mostrarIa && iaPrincipal;
