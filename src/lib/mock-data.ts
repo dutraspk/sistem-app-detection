@@ -72,6 +72,9 @@ export interface Notificacao {
   titulo: string;
   descricao: string;
   data: string;
+  imagem?: string; // frame da detecção (data URL)
+  camera?: string;
+  local?: string;
 }
 
 export function statusFromValidade(validade: string): EPIStatus {
