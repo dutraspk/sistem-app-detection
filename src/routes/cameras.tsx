@@ -86,17 +86,36 @@ function CameraCard({ c }: { c: Camera }) {
     toast.error(`Falha na câmera ${c.nome}: ${msg}`);
   }, [c.nome]);
 
+  const ultimoCiclo = useRef<string | null>(null);
   const onDeteccao = useCallback(
-    ({ faltando }: { detectados: string[]; faltando: string[] }) => {
+    ({ detectados, faltando, frame, ocorreuEm }: { detectados: string[]; faltando: string[]; frame?: string; ocorreuEm: string }) => {
       if (!faltando.length) {
         setUltimo("Liberado — todos os EPIs detectados");
         return;
       }
       setUltimo(`Bloqueado — faltando ${faltando.join(", ")}`);
 
+      // Uma única notificação por ciclo de reconhecimento.
+      if (ultimoCiclo.current === ocorreuEm) return;
+      ultimoCiclo.current = ocorreuEm;
+
       const emRisco = c.area === "Risco";
+      const local = c.setor || c.nome;
+      const quando = new Date(ocorreuEm).toLocaleString("pt-BR");
+      const pessoa = detectados.some((d) => d === "pessoa" || d === "person") ? "Pessoa" : "Pessoa não identificada";
+
+      store.addNotificacao({
+        tipo: emRisco ? "Crítico" : "Alerta",
+        titulo: `EPI ausente em ${c.nome}${emRisco ? " (área de risco)" : ""}`,
+        descricao: `${quando} • Câmera: ${c.nome} • Local: ${local} • ${pessoa} • EPI não identificado: ${faltando.join(", ")} • Nível: ${emRisco ? "Crítica" : "Alta"}`,
+        data: ocorreuEm,
+        imagem: frame,
+        camera: c.nome,
+        local,
+      });
+
       const agora = Date.now();
-      // Área de risco: registro obrigatório (sem trava). Demais: 1 por minuto.
+      // Área de risco: ocorrência obrigatória. Demais: 1 por minuto.
       if (!emRisco && agora - ultimaOcorrencia.current < 60_000) return;
       ultimaOcorrencia.current = agora;
 
@@ -104,22 +123,15 @@ function CameraCard({ c }: { c: Camera }) {
       store.addOcorrencia({
         tipo: `EPI faltando: ${faltando.join(", ")}`,
         trabalhador: "Não identificado",
-        local: c.setor || c.nome,
+        local,
         camera: c.nome,
         gravidade: emRisco ? "Crítica" : "Alta",
-        data: new Date().toISOString(),
+        data: ocorreuEm,
         status: "Aberta",
         observacoes: emRisco
           ? `ÁREA DE RISCO — registro obrigatório. Detectado pela IA local (YOLO) na câmera ${c.nome}. EPIs faltando: ${faltando.join(", ")}.`
           : `Detectado automaticamente pela IA local (YOLO) na câmera ${c.nome}.`,
       });
-      if (emRisco) {
-        store.addNotificacao({
-          tipo: "Crítico",
-          titulo: `Área de risco — EPI faltando em ${c.nome}`,
-          descricao: `Ocorrência obrigatória registrada: ${faltando.join(", ")}.`,
-        });
-      }
     },
     [c.nome, c.setor, c.area],
   );
