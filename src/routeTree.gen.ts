@@ -9,50 +9,20 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as UsuariosRouteImport } from './routes/usuarios'
-import { Route as OcorrenciasRouteImport } from './routes/ocorrencias'
-import { Route as NotificacoesRouteImport } from './routes/notificacoes'
-import { Route as FuncionariosRouteImport } from './routes/funcionarios'
-import { Route as EpisRouteImport } from './routes/epis'
-import { Route as DeteccoesRouteImport } from './routes/deteccoes'
-import { Route as CamerasRouteImport } from './routes/cameras'
-import { Route as AcessosRouteImport } from './routes/acessos'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AcessosRouteImport } from './routes/acessos'
+import { Route as CamerasRouteImport } from './routes/cameras'
+import { Route as DeteccoesRouteImport } from './routes/deteccoes'
+import { Route as EpisRouteImport } from './routes/epis'
+import { Route as FuncionariosRouteImport } from './routes/funcionarios'
+import { Route as NotificacoesRouteImport } from './routes/notificacoes'
+import { Route as OcorrenciasRouteImport } from './routes/ocorrencias'
+import { Route as UsuariosRouteImport } from './routes/usuarios'
 import { Route as ApiPublicEventosRouteImport } from './routes/api/public/eventos'
 
-const UsuariosRoute = UsuariosRouteImport.update({
-  id: '/usuarios',
-  path: '/usuarios',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const OcorrenciasRoute = OcorrenciasRouteImport.update({
-  id: '/ocorrencias',
-  path: '/ocorrencias',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const NotificacoesRoute = NotificacoesRouteImport.update({
-  id: '/notificacoes',
-  path: '/notificacoes',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const FuncionariosRoute = FuncionariosRouteImport.update({
-  id: '/funcionarios',
-  path: '/funcionarios',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const EpisRoute = EpisRouteImport.update({
-  id: '/epis',
-  path: '/epis',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DeteccoesRoute = DeteccoesRouteImport.update({
-  id: '/deteccoes',
-  path: '/deteccoes',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CamerasRoute = CamerasRouteImport.update({
-  id: '/cameras',
-  path: '/cameras',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AcessosRoute = AcessosRouteImport.update({
@@ -60,9 +30,39 @@ const AcessosRoute = AcessosRouteImport.update({
   path: '/acessos',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const CamerasRoute = CamerasRouteImport.update({
+  id: '/cameras',
+  path: '/cameras',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DeteccoesRoute = DeteccoesRouteImport.update({
+  id: '/deteccoes',
+  path: '/deteccoes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EpisRoute = EpisRouteImport.update({
+  id: '/epis',
+  path: '/epis',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FuncionariosRoute = FuncionariosRouteImport.update({
+  id: '/funcionarios',
+  path: '/funcionarios',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NotificacoesRoute = NotificacoesRouteImport.update({
+  id: '/notificacoes',
+  path: '/notificacoes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OcorrenciasRoute = OcorrenciasRouteImport.update({
+  id: '/ocorrencias',
+  path: '/ocorrencias',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UsuariosRoute = UsuariosRouteImport.update({
+  id: '/usuarios',
+  path: '/usuarios',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicEventosRoute = ApiPublicEventosRouteImport.update({
@@ -162,53 +162,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/usuarios': {
-      id: '/usuarios'
-      path: '/usuarios'
-      fullPath: '/usuarios'
-      preLoaderRoute: typeof UsuariosRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/ocorrencias': {
-      id: '/ocorrencias'
-      path: '/ocorrencias'
-      fullPath: '/ocorrencias'
-      preLoaderRoute: typeof OcorrenciasRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/notificacoes': {
-      id: '/notificacoes'
-      path: '/notificacoes'
-      fullPath: '/notificacoes'
-      preLoaderRoute: typeof NotificacoesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/funcionarios': {
-      id: '/funcionarios'
-      path: '/funcionarios'
-      fullPath: '/funcionarios'
-      preLoaderRoute: typeof FuncionariosRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/epis': {
-      id: '/epis'
-      path: '/epis'
-      fullPath: '/epis'
-      preLoaderRoute: typeof EpisRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/deteccoes': {
-      id: '/deteccoes'
-      path: '/deteccoes'
-      fullPath: '/deteccoes'
-      preLoaderRoute: typeof DeteccoesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/cameras': {
-      id: '/cameras'
-      path: '/cameras'
-      fullPath: '/cameras'
-      preLoaderRoute: typeof CamerasRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/acessos': {
@@ -218,11 +176,53 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AcessosRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/cameras': {
+      id: '/cameras'
+      path: '/cameras'
+      fullPath: '/cameras'
+      preLoaderRoute: typeof CamerasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/deteccoes': {
+      id: '/deteccoes'
+      path: '/deteccoes'
+      fullPath: '/deteccoes'
+      preLoaderRoute: typeof DeteccoesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/epis': {
+      id: '/epis'
+      path: '/epis'
+      fullPath: '/epis'
+      preLoaderRoute: typeof EpisRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/funcionarios': {
+      id: '/funcionarios'
+      path: '/funcionarios'
+      fullPath: '/funcionarios'
+      preLoaderRoute: typeof FuncionariosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/notificacoes': {
+      id: '/notificacoes'
+      path: '/notificacoes'
+      fullPath: '/notificacoes'
+      preLoaderRoute: typeof NotificacoesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ocorrencias': {
+      id: '/ocorrencias'
+      path: '/ocorrencias'
+      fullPath: '/ocorrencias'
+      preLoaderRoute: typeof OcorrenciasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/usuarios': {
+      id: '/usuarios'
+      path: '/usuarios'
+      fullPath: '/usuarios'
+      preLoaderRoute: typeof UsuariosRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/eventos': {
