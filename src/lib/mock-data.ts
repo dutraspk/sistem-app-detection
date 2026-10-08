@@ -23,6 +23,7 @@ export interface EPI {
   rfid: string;
   validade: string; // ISO date
   trabalhador: string; // nome ou "—"
+  external_name?: string; // nome da classe usada pela YOLO (ex.: helmet)
 }
 
 export interface Acesso {
@@ -56,6 +57,7 @@ export interface Camera {
   url: string;       // RTSP/HTTP do stream (ex.: rtsp://raspberrypi.local:8554/cam)
   status: "online" | "offline";
   fps: number;
+  episObrigatorios?: string[]; // ids de EPIs exigidos nesta câmera
 }
 
 export interface Usuario {

@@ -67,7 +67,11 @@ export const store = {
   },
 
   addEPI(e: Omit<EPI, "id">) {
-    state = { ...state, epis: [...state.epis, { ...e, id: `EPI-${Date.now()}` }] };
+    state = { ...state, epis: [...state.epis, { ...e, id: crypto.randomUUID() }] };
+    persist();
+  },
+  updateEPI(id: string, patch: Partial<EPI>) {
+    state = { ...state, epis: state.epis.map(x => x.id === id ? { ...x, ...patch } : x) };
     persist();
   },
   removeEPI(id: string) {
@@ -95,6 +99,10 @@ export const store = {
 
   addCamera(c: Omit<Camera, "id">) {
     state = { ...state, cameras: [...state.cameras, { ...c, id: `CAM-${Date.now()}` }] };
+    persist();
+  },
+  updateCamera(id: string, patch: Partial<Camera>) {
+    state = { ...state, cameras: state.cameras.map(x => x.id === id ? { ...x, ...patch } : x) };
     persist();
   },
   removeCamera(id: string) {
