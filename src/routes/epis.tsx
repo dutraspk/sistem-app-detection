@@ -19,6 +19,8 @@ import {
 } from "@/components/ui/table";
 import { Plus, Search, HardHat, Trash2 } from "lucide-react";
 import { useStore, store } from "@/lib/store";
+import { normalizarExterno } from "@/lib/epi-mapping";
+import { toast } from "sonner";
 import { type EPICategory, statusFromValidade } from "@/lib/mock-data";
 
 export const Route = createFileRoute("/epis")({ component: EPIs });
@@ -43,7 +45,7 @@ function EPIs() {
   const [cat, setCat] = useState<(typeof categorias)[number]>("Todos");
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({
-    nome: "", categoria: "Capacetes" as EPICategory, cor: "", rfid: "",
+    nome: "", categoria: "Capacetes" as EPICategory, cor: "", rfid: "", external_name: "",
     validade: "", trabalhador: "—",
   });
 
@@ -55,8 +57,8 @@ function EPIs() {
 
   const submit = () => {
     if (!form.nome.trim() || !form.validade) return;
-    store.addEPI(form);
-    setForm({ nome: "", categoria: "Capacetes", cor: "", rfid: "", validade: "", trabalhador: "—" });
+    store.addEPI({ ...form, external_name: normalizarExterno(form.external_name) });
+    setForm({ nome: "", categoria: "Capacetes", cor: "", rfid: "", external_name: "", validade: "", trabalhador: "—" });
     setOpen(false);
   };
 
@@ -81,6 +83,11 @@ function EPIs() {
               <div className="grid grid-cols-2 gap-3">
                 <div><Label>Cor</Label><Input value={form.cor} onChange={e => setForm({ ...form, cor: e.target.value })} /></div>
                 <div><Label>RFID</Label><Input value={form.rfid} onChange={e => setForm({ ...form, rfid: e.target.value })} placeholder="RF-XXXXX" /></div>
+              </div>
+              <div>
+                <Label>Nome externo (classe YOLO)</Label>
+                <Input value={form.external_name} onChange={e => setForm({ ...form, external_name: e.target.value })} placeholder="Ex.: helmet" />
+                <p className="text-[11px] text-muted-foreground mt-1">Nome da classe enviado ao servidor de detecção. Independente do nome exibido.</p>
               </div>
               <div><Label>Validade</Label><Input type="date" value={form.validade} onChange={e => setForm({ ...form, validade: e.target.value })} /></div>
               <div>
@@ -138,6 +145,7 @@ function EPIs() {
                   <TableHead>Categoria</TableHead>
                   <TableHead>Cor</TableHead>
                   <TableHead>RFID</TableHead>
+                  <TableHead>Nome externo</TableHead>
                   <TableHead>Validade</TableHead>
                   <TableHead>Trabalhador</TableHead>
                   <TableHead>Status</TableHead>
@@ -152,6 +160,17 @@ function EPIs() {
                     <TableCell>{e.categoria}</TableCell>
                     <TableCell>{e.cor || "—"}</TableCell>
                     <TableCell className="font-mono text-xs">{e.rfid || "—"}</TableCell>
+                    <TableCell>
+                      <Input
+                        defaultValue={e.external_name ?? ""}
+                        placeholder="ex.: helmet"
+                        className="h-8 w-32 font-mono text-xs"
+                        onBlur={(ev) => {
+                          const v = normalizarExterno(ev.target.value);
+                          if (v !== (e.external_name ?? "")) { store.updateEPI(e.id, { external_name: v }); toast.success("Nome externo atualizado"); }
+                        }}
+                      />
+                    </TableCell>
                     <TableCell>{new Date(e.validade).toLocaleDateString("pt-BR")}</TableCell>
                     <TableCell>{e.trabalhador}</TableCell>
                     <TableCell>{statusBadge(statusFromValidade(e.validade))}</TableCell>
@@ -163,7 +182,7 @@ function EPIs() {
                   </TableRow>
                 ))}
                 {list.length === 0 && (
-                  <TableRow><TableCell colSpan={9} className="text-center text-muted-foreground py-12">Nenhum EPI encontrado.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={10} className="text-center text-muted-foreground py-12">Nenhum EPI encontrado.</TableCell></TableRow>
                 )}
               </TableBody>
             </Table>

@@ -26,7 +26,9 @@ from typing import Set, List
 
 import cv2
 import numpy as np
-from fastapi import FastAPI, File, UploadFile
+import json
+from typing import Optional
+from fastapi import FastAPI, File, UploadFile, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 
@@ -221,7 +223,22 @@ def health():
 
 
 @app.post("/detect")
-async def detect(file: UploadFile = File(...)):
+async def detect(
+    file: UploadFile = File(...),
+    camera_id: Optional[str] = Form(None),
+    required_epis: Optional[str] = Form(None),
+):
+    # EPIs obrigatórios enviados pelo app (external_name). Se ausente, usa OBRIGATORIOS.
+    obrigatorios = OBRIGATORIOS
+    if required_epis:
+        try:
+            lista = json.loads(required_epis)
+            if not isinstance(lista, list) or not all(isinstance(x, str) for x in lista):
+                raise ValueError
+            obrigatorios = {x.strip().lower() for x in lista if x.strip()}
+        except Exception:
+            return Response(content=b"required_epis invalido", media_type="text/plain",
+                            status_code=400, headers={"X-Detections": "", "X-Missing": ""})
     if modelo is None:
         return Response(
             content=b"Modelo nao carregado",
@@ -245,7 +262,7 @@ async def detect(file: UploadFile = File(...)):
 
         # Só exige EPI se houver uma pessoa no frame
         if CLASSE_PESSOA in detectados:
-            faltando = sorted(OBRIGATORIOS - detectados)
+            faltando = sorted(obrigatorios - detectados)
         else:
             faltando = []
 
