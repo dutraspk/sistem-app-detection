@@ -19,6 +19,10 @@ type Props = {
   iaPrincipal?: boolean;
   /** Clique na miniatura para alternar qual fica em tela grande. */
   onAlternarPrincipal?: () => void;
+  /** Id da câmera enviado ao servidor de detecção. */
+  cameraId?: string;
+  /** EPIs obrigatórios já resolvidos (external_name) ou erro de configuração. */
+  episPayload?: { ok: true; required_epis: string[] } | { ok: false; erro: string };
 };
 
 export const CameraPlayer = ({
@@ -31,7 +35,13 @@ export const CameraPlayer = ({
   onCameraErro,
   iaPrincipal = false,
   onAlternarPrincipal,
+  cameraId,
+  episPayload,
 }: Props) => {
+  const episRef = useRef(episPayload);
+  episRef.current = episPayload;
+  const camIdRef = useRef(cameraId);
+  camIdRef.current = cameraId;
   const videoRef = useRef<HTMLVideoElement>(null);
   const [processada, setProcessada] = useState<string | null>(null);
   const onStatusRef = useRef(onStatus);
@@ -191,8 +201,16 @@ export const CameraPlayer = ({
         if (!blob || !vivo) return;
         frameUrl = canvas.toDataURL("image/jpeg", 0.5);
 
+        const cfg = episRef.current;
+        if (cfg && !cfg.ok) {
+          const err = new Error(cfg.erro);
+          err.name = "ConfigError";
+          throw err;
+        }
         const fd = new FormData();
         fd.append("file", blob, "frame.jpg");
+        if (camIdRef.current) fd.append("camera_id", camIdRef.current);
+        if (cfg?.ok) fd.append("required_epis", JSON.stringify(cfg.required_epis));
 
         const r = await fetch(`${YOLO_API_URL}/detect`, {
           method: "POST",
@@ -229,7 +247,9 @@ export const CameraPlayer = ({
         if (vivo && (e as Error).name !== "AbortError") {
           onStatusRef.current?.({
             online: false,
-            erro: "IA local offline — inicie o servidor YOLO no notebook",
+            erro: (e as Error).name === "ConfigError"
+              ? `Configuração: ${(e as Error).message}`
+              : "IA local offline — inicie o servidor YOLO no notebook",
           });
         }
       } finally {
