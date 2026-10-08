@@ -20,6 +20,8 @@ import { CameraPlayer } from "@/components/CameraPlayer";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import type { Camera } from "@/lib/mock-data";
+import { EpiSelector } from "@/components/EpiSelector";
+import { resolverEpisCamera } from "@/lib/epi-mapping";
 
 
 
@@ -40,6 +42,10 @@ function CameraCard({ c }: { c: Camera }) {
   const boxRef = useRef<HTMLDivElement>(null);
   const iaOnlineRef = useRef<boolean | null>(null);
   const risco = c.area === "Risco";
+  const epis = useStore("epis");
+  const episPayload = resolverEpisCamera(c, epis);
+  const [selOpen, setSelOpen] = useState(false);
+  const episCam = epis.filter((e) => c.episObrigatorios?.includes(e.id));
 
   useEffect(() => {
     const onFs = () => setFullscreen(document.fullscreenElement === boxRef.current);
@@ -150,6 +156,8 @@ function CameraCard({ c }: { c: Camera }) {
               onCameraErro={onCameraErro}
               iaPrincipal={iaPrincipal}
               onAlternarPrincipal={() => setIaPrincipal((v) => !v)}
+              cameraId={c.id}
+              episPayload={episPayload}
             />
 
             <div className="absolute top-3 left-3 z-10 inline-flex items-center gap-1.5 text-[10px] uppercase tracking-wider px-2 py-1 bg-destructive/90 text-destructive-foreground rounded pointer-events-none">
@@ -237,6 +245,25 @@ function CameraCard({ c }: { c: Camera }) {
           {c.url.startsWith("device:") ? "Câmera local do dispositivo" : c.url}
         </p>
 
+        <div className="mt-3 pt-3 border-t border-border">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-medium">EPIs obrigatórios para detecção</p>
+            <Button size="sm" variant="ghost" className="h-7 text-[11px]" onClick={() => setSelOpen(true)}>Editar</Button>
+          </div>
+          <div className="flex flex-wrap gap-1 mt-1">
+            {episCam.length === 0
+              ? <span className="text-[11px] text-muted-foreground">Nenhum — servidor usa a lista padrão</span>
+              : episCam.map((e) => <Badge key={e.id} variant="secondary">{e.nome}</Badge>)}
+          </div>
+          {!episPayload.ok && <p className="text-[11px] text-destructive mt-1">{episPayload.erro}</p>}
+          <EpiSelector
+            open={selOpen}
+            onOpenChange={setSelOpen}
+            value={c.episObrigatorios ?? []}
+            onConfirm={(ids) => { store.updateCamera(c.id, { episObrigatorios: ids }); toast.success("EPIs da câmera salvos"); }}
+          />
+        </div>
+
         <div className="flex items-center justify-between mt-3 pt-3 border-t border-border">
           <div>
             <p className="text-xs font-medium">Câmera: {ligada ? "ON" : "OFF"}</p>
@@ -278,7 +305,10 @@ function Cameras() {
     nome: "", setor: "", tipo: "Entrada" as "Entrada" | "Interna",
     area: "Segura" as "Risco" | "Segura",
     url: "", status: "online" as "online" | "offline", fps: 30,
+    episObrigatorios: [] as string[],
   });
+  const [selNovo, setSelNovo] = useState(false);
+  const todosEpis = useStore("epis");
 
   const carregarDispositivos = useCallback(async () => {
     setPermErro(null);
@@ -323,7 +353,7 @@ function Cameras() {
     const escolhida = dispositivos.find((d) => `device:${d.deviceId}` === form.url);
     const nome = form.nome.trim() || escolhida?.label || "Câmera do notebook";
     store.addCamera({ ...form, nome });
-    setForm({ nome: "", setor: "", tipo: "Entrada", area: "Segura", url: "", status: "online", fps: 30 });
+    setForm({ nome: "", setor: "", tipo: "Entrada", area: "Segura", url: "", status: "online", fps: 30, episObrigatorios: [] });
     setOpen(false);
   };
 
@@ -380,6 +410,23 @@ function Cameras() {
                 <p className="text-[11px] text-muted-foreground mt-1">
                   Em área de risco, toda falta de EPI gera obrigatoriamente uma ocorrência.
                 </p>
+              </div>
+              <div>
+                <Label>EPIs obrigatórios para detecção</Label>
+                <div className="flex flex-wrap items-center gap-1 mt-1">
+                  {todosEpis.filter((e) => form.episObrigatorios.includes(e.id)).map((e) => (
+                    <Badge key={e.id} variant="secondary">{e.nome}</Badge>
+                  ))}
+                  <Button size="sm" variant="outline" className="h-7 text-[11px]" onClick={() => setSelNovo(true)}>
+                    Selecionar EPIs ({form.episObrigatorios.length})
+                  </Button>
+                </div>
+                <EpiSelector
+                  open={selNovo}
+                  onOpenChange={setSelNovo}
+                  value={form.episObrigatorios}
+                  onConfirm={(ids) => setForm((f) => ({ ...f, episObrigatorios: ids }))}
+                />
               </div>
             </div>
             <DialogFooter>
