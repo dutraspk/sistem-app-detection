@@ -45,7 +45,9 @@ function CameraCard({ c }: { c: Camera }) {
   const epis = useStore("epis");
   const episPayload = resolverEpisCamera(c, epis);
   const [selOpen, setSelOpen] = useState(false);
-  const episCam = epis.filter((e) => c.episObrigatorios?.includes(e.id));
+  const catsCam = c.categoriasObrigatorias?.length
+    ? c.categoriasObrigatorias
+    : Array.from(new Set(epis.filter((e) => c.episObrigatorios?.includes(e.id)).map((e) => e.categoria as string)));
 
   useEffect(() => {
     const onFs = () => setFullscreen(document.fullscreenElement === boxRef.current);
@@ -251,16 +253,16 @@ function CameraCard({ c }: { c: Camera }) {
             <Button size="sm" variant="ghost" className="h-7 text-[11px]" onClick={() => setSelOpen(true)}>Editar</Button>
           </div>
           <div className="flex flex-wrap gap-1 mt-1">
-            {episCam.length === 0
-              ? <span className="text-[11px] text-muted-foreground">Nenhum — servidor usa a lista padrão</span>
-              : episCam.map((e) => <Badge key={e.id} variant="secondary">{e.nome}</Badge>)}
+            {catsCam.length === 0
+              ? <span className="text-[11px] text-muted-foreground">Nenhuma — servidor usa a lista padrão</span>
+              : catsCam.map((k) => <Badge key={k} variant="secondary">{k}</Badge>)}
           </div>
           {!episPayload.ok && <p className="text-[11px] text-destructive mt-1">{episPayload.erro}</p>}
           <EpiSelector
             open={selOpen}
             onOpenChange={setSelOpen}
-            value={c.episObrigatorios ?? []}
-            onConfirm={(ids) => { store.updateCamera(c.id, { episObrigatorios: ids }); toast.success("EPIs da câmera salvos"); }}
+            value={catsCam}
+            onConfirm={(cats) => { store.updateCamera(c.id, { categoriasObrigatorias: cats, episObrigatorios: [] }); toast.success("Categorias da câmera salvas"); }}
           />
         </div>
 
@@ -305,10 +307,9 @@ function Cameras() {
     nome: "", setor: "", tipo: "Entrada" as "Entrada" | "Interna",
     area: "Segura" as "Risco" | "Segura",
     url: "", status: "online" as "online" | "offline", fps: 30,
-    episObrigatorios: [] as string[],
+    categoriasObrigatorias: [] as string[],
   });
   const [selNovo, setSelNovo] = useState(false);
-  const todosEpis = useStore("epis");
 
   const carregarDispositivos = useCallback(async () => {
     setPermErro(null);
@@ -353,7 +354,7 @@ function Cameras() {
     const escolhida = dispositivos.find((d) => `device:${d.deviceId}` === form.url);
     const nome = form.nome.trim() || escolhida?.label || "Câmera do notebook";
     store.addCamera({ ...form, nome });
-    setForm({ nome: "", setor: "", tipo: "Entrada", area: "Segura", url: "", status: "online", fps: 30, episObrigatorios: [] });
+    setForm({ nome: "", setor: "", tipo: "Entrada", area: "Segura", url: "", status: "online", fps: 30, categoriasObrigatorias: [] });
     setOpen(false);
   };
 
@@ -414,18 +415,18 @@ function Cameras() {
               <div>
                 <Label>EPIs obrigatórios para detecção</Label>
                 <div className="flex flex-wrap items-center gap-1 mt-1">
-                  {todosEpis.filter((e) => form.episObrigatorios.includes(e.id)).map((e) => (
-                    <Badge key={e.id} variant="secondary">{e.nome}</Badge>
+                  {form.categoriasObrigatorias.map((k) => (
+                    <Badge key={k} variant="secondary">{k}</Badge>
                   ))}
                   <Button size="sm" variant="outline" className="h-7 text-[11px]" onClick={() => setSelNovo(true)}>
-                    Selecionar EPIs ({form.episObrigatorios.length})
+                    Selecionar categorias ({form.categoriasObrigatorias.length})
                   </Button>
                 </div>
                 <EpiSelector
                   open={selNovo}
                   onOpenChange={setSelNovo}
-                  value={form.episObrigatorios}
-                  onConfirm={(ids) => setForm((f) => ({ ...f, episObrigatorios: ids }))}
+                  value={form.categoriasObrigatorias}
+                  onConfirm={(cats) => setForm((f) => ({ ...f, categoriasObrigatorias: cats }))}
                 />
               </div>
             </div>

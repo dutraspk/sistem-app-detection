@@ -27,8 +27,19 @@ export type PayloadEpis =
 
 /** Resolve os EPIs obrigatórios de UMA câmera para os nomes externos. */
 export function resolverEpisCamera(camera: Camera, epis: EPI[]): PayloadEpis {
-  const ids = Array.from(new Set(camera.episObrigatorios ?? []));
   const out: string[] = [];
+  const cats = camera.categoriasObrigatorias ?? [];
+  if (cats.length) {
+    for (const cat of cats) {
+      const doCat = epis.filter((e) => e.categoria === cat);
+      if (!doCat.length) return { ok: false, erro: `Categoria "${cat}" sem EPIs cadastrados. Revise a câmera.` };
+      const validos = doCat.filter((e) => externoValido(e.external_name));
+      if (!validos.length) return { ok: false, erro: `Nenhum EPI da categoria "${cat}" tem nome externo válido. Configure em EPIs.` };
+      validos.forEach((e) => out.push(e.external_name!));
+    }
+    return { ok: true, required_epis: Array.from(new Set(out)) };
+  }
+  const ids = Array.from(new Set(camera.episObrigatorios ?? []));
   for (const id of ids) {
     const epi = epis.find((e) => e.id === id);
     if (!epi) return { ok: false, erro: `EPI obrigatório removido do cadastro (id ${id}). Revise a câmera.` };
