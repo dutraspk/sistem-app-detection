@@ -86,3 +86,9 @@ export function statusFromValidade(validade: string): EPIStatus {
   if (diff < 30) return "proximo";
   return "ativo";
 }
+
+
+export const EPI_CATEGORIAS: EPICategory[] = [
+  "Capacetes", "Luvas", "Botas", "Óculos", "Coletes",
+  "Protetores auriculares", "Máscaras", "Outros",
+];

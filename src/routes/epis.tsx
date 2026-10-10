@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { EPI_CATEGORIAS } from "@/lib/mock-data";
 import { useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { PageHeader } from "@/components/PageHeader";
@@ -25,10 +26,7 @@ import { type EPICategory, statusFromValidade } from "@/lib/mock-data";
 
 export const Route = createFileRoute("/epis")({ component: EPIs });
 
-const categorias: ("Todos" | EPICategory)[] = [
-  "Todos", "Capacetes", "Luvas", "Botas", "Óculos", "Coletes",
-  "Protetores auriculares", "Máscaras", "Outros",
-];
+const categorias: ("Todos" | EPICategory)[] = ["Todos", ...EPI_CATEGORIAS];
 
 function statusBadge(s: string) {
   if (s === "ativo")

@@ -8,6 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { useStore } from "@/lib/store";
 import { externoValido } from "@/lib/epi-mapping";
+import { EPI_CATEGORIAS } from "@/lib/mock-data";
 
 type Props = {
   open: boolean;
@@ -20,7 +21,9 @@ type Props = {
 export function EpiSelector({ open, onOpenChange, value, onConfirm }: Props) {
   const epis = useStore("epis");
   const categorias = useMemo(() => {
-    const m = new Map<string, { total: number; validos: number }>();
+    const m = new Map<string, { total: number; validos: number }>(
+      EPI_CATEGORIAS.map((c) => [c as string, { total: 0, validos: 0 }]),
+    );
     for (const e of epis) {
       const k = e.categoria as string;
       const v = m.get(k) ?? { total: 0, validos: 0 };
@@ -28,7 +31,7 @@ export function EpiSelector({ open, onOpenChange, value, onConfirm }: Props) {
       if (externoValido(e.external_name)) v.validos++;
       m.set(k, v);
     }
-    return Array.from(m.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+    return Array.from(m.entries());
   }, [epis]);
 
   const [sel, setSel] = useState<Set<string>>(new Set(value));
@@ -62,8 +65,10 @@ export function EpiSelector({ open, onOpenChange, value, onConfirm }: Props) {
                   <Checkbox checked={sel.has(k)} onCheckedChange={() => toggle(k)} />
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium truncate">{k}</p>
-                    <p className={`text-[11px] ${info.validos ? "text-muted-foreground" : "text-destructive"}`}>
-                      {info.total} EPI(s){info.validos < info.total ? ` · ${info.total - info.validos} sem nome externo` : ""}
+                    <p className={`text-[11px] ${info.validos || info.total === 0 ? "text-muted-foreground" : "text-destructive"}`}>
+                      {info.total === 0
+                        ? "nenhum EPI cadastrado"
+                        : `${info.total} EPI(s)${info.validos < info.total ? ` · ${info.total - info.validos} sem nome externo` : ""}`}
                     </p>
                   </div>
                 </label>

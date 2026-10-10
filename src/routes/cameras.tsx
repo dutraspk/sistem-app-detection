@@ -412,9 +412,9 @@ function Cameras() {
                   Em área de risco, toda falta de EPI gera obrigatoriamente uma ocorrência.
                 </p>
               </div>
-              <div>
-                <Label>EPIs obrigatórios para detecção</Label>
-                <div className="flex flex-wrap items-center gap-1 mt-1">
+              <div className="flex flex-col items-center gap-2 rounded-md border border-border p-3 text-center">
+                <Label>Categorias de EPI obrigatórias</Label>
+                <div className="flex flex-wrap justify-center items-center gap-1">
                   {form.categoriasObrigatorias.map((k) => (
                     <Badge key={k} variant="secondary">{k}</Badge>
                   ))}
