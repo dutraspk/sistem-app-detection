@@ -57,7 +57,8 @@ export interface Camera {
   url: string;       // RTSP/HTTP do stream (ex.: rtsp://raspberrypi.local:8554/cam)
   status: "online" | "offline";
   fps: number;
-  episObrigatorios?: string[]; // ids de EPIs exigidos nesta câmera
+  episObrigatorios?: string[]; // ids de EPIs exigidos nesta câmera (legado)
+  categoriasObrigatorias?: string[]; // categorias de EPI exigidas nesta câmera
 }
 
 export interface Usuario {
