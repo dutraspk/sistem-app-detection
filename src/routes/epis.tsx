@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { EPI_CATEGORIAS } from "@/lib/mock-data";
 import { useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { PageHeader } from "@/components/PageHeader";
