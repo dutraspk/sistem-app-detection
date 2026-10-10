@@ -22,6 +22,7 @@ import { toast } from "sonner";
 import type { Camera } from "@/lib/mock-data";
 import { EpiSelector } from "@/components/EpiSelector";
 import { resolverEpisCamera } from "@/lib/epi-mapping";
+import { enviarConfigCamera } from "@/lib/camera-config-sync";
 
 
 
@@ -353,7 +354,14 @@ function Cameras() {
     if (!form.url) return;
     const escolhida = dispositivos.find((d) => `device:${d.deviceId}` === form.url);
     const nome = form.nome.trim() || escolhida?.label || "Câmera do notebook";
-    store.addCamera({ ...form, nome });
+    const nova = store.addCamera({ ...form, nome });
+    if (nova.categoriasObrigatorias?.length) {
+      const tId = toast.loading("Enviando EPIs obrigatórios ao servidor YOLO…");
+      void enviarConfigCamera(nova, store.getEpis()).then((r) => {
+        if (r.ok) toast.success("Câmera salva e EPIs obrigatórios enviados ao servidor YOLO.", { id: tId });
+        else toast.error(`Câmera salva, mas o envio ao servidor YOLO falhou: ${r.erro}`, { id: tId, duration: 8000 });
+      });
+    }
     setForm({ nome: "", setor: "", tipo: "Entrada", area: "Segura", url: "", status: "online", fps: 30, categoriasObrigatorias: [] });
     setOpen(false);
   };
