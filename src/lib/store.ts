@@ -97,9 +97,14 @@ export const store = {
     persist();
   },
 
-  addCamera(c: Omit<Camera, "id">) {
-    state = { ...state, cameras: [...state.cameras, { ...c, id: `CAM-${Date.now()}` }] };
+  addCamera(c: Omit<Camera, "id">): Camera {
+    const nova: Camera = { ...c, id: `CAM-${Date.now()}` };
+    state = { ...state, cameras: [...state.cameras, nova] };
     persist();
+    return nova;
+  },
+  getEpis() {
+    return state.epis;
   },
   updateCamera(id: string, patch: Partial<Camera>) {
     state = { ...state, cameras: state.cameras.map(x => x.id === id ? { ...x, ...patch } : x) };

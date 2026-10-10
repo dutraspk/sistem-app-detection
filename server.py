@@ -3,6 +3,7 @@ Servidor YOLO local para o EPI Guard.
 Roda no PC/notebook e recebe frames do navegador via POST /detect.
 
 Endpoints:
+  POST /cameras/config -> salva EPIs obrigatórios de uma câmera
   GET  /health       -> verifica se a IA está online
   POST /detect       -> recebe imagem JPEG (campo 'file'), retorna imagem
                         processada com as detecções desenhadas + cabeçalhos:
@@ -27,6 +28,8 @@ from typing import Set, List
 import cv2
 import numpy as np
 import json
+from fastapi import Body
+from fastapi.responses import JSONResponse
 from typing import Optional
 from fastapi import FastAPI, File, UploadFile, Form
 from fastapi.middleware.cors import CORSMiddleware
@@ -222,6 +225,22 @@ def health():
     }
 
 
+# Configuração de EPIs obrigatórios por câmera (enviada pelo app ao cadastrar a câmera)
+CONFIG_CAMERAS: dict = {}
+
+
+@app.post("/cameras/config")
+async def cameras_config(body: dict = Body(...)):
+    camera_id = body.get("camera_id")
+    lista = body.get("required_epis")
+    if not isinstance(camera_id, str) or not camera_id.strip():
+        return JSONResponse({"ok": False, "erro": "camera_id invalido"}, status_code=400)
+    if not isinstance(lista, list) or not all(isinstance(x, str) for x in lista):
+        return JSONResponse({"ok": False, "erro": "required_epis invalido"}, status_code=400)
+    CONFIG_CAMERAS[camera_id.strip()] = {x.strip().lower() for x in lista if x.strip()}
+    return {"ok": True, "camera_id": camera_id, "required_epis": sorted(CONFIG_CAMERAS[camera_id.strip()])}
+
+
 @app.post("/detect")
 async def detect(
     file: UploadFile = File(...),
@@ -229,7 +248,7 @@ async def detect(
     required_epis: Optional[str] = Form(None),
 ):
     # EPIs obrigatórios enviados pelo app (external_name). Se ausente, usa OBRIGATORIOS.
-    obrigatorios = OBRIGATORIOS
+    obrigatorios = CONFIG_CAMERAS.get(camera_id or "", OBRIGATORIOS)
     if required_epis:
         try:
             lista = json.loads(required_epis)
