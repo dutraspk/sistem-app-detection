@@ -59,6 +59,8 @@ export interface Camera {
   fps: number;
   episObrigatorios?: string[]; // ids de EPIs exigidos nesta câmera (legado)
   categoriasObrigatorias?: string[]; // categorias de EPI exigidas nesta câmera
+  /** Estado da sincronização dos EPIs obrigatórios com o servidor YOLO. */
+  syncYolo?: { status: "pendente" | "enviado" | "falhou"; em: string; erro?: string; enviados?: string[] };
 }
 
 export interface Usuario {

@@ -5,20 +5,31 @@
 import { YOLO_API_URL } from "@/components/CameraPlayer";
 import type { Camera, EPI } from "./mock-data";
 import { resolverEpisCamera } from "./epi-mapping";
+import { store } from "./store";
 
 const emAndamento = new Set<string>();
 
 export type ResultadoSync = { ok: true } | { ok: false; erro: string };
 
+/** POST idempotente: o servidor substitui a lista da câmera (mesmo camera_id), sem duplicar. */
 export async function enviarConfigCamera(camera: Camera, epis: EPI[]): Promise<ResultadoSync> {
   const payload = resolverEpisCamera(camera, epis);
-  if (!payload.ok) return { ok: false, erro: payload.erro };
+  const marcar = (s: Camera["syncYolo"]) => store.updateCamera(camera.id, { syncYolo: s });
+  if (!payload.ok) {
+    marcar({ status: "falhou", em: new Date().toISOString(), erro: payload.erro });
+    return { ok: false, erro: payload.erro };
+  }
   if (!payload.required_epis.length) return { ok: false, erro: "Nenhum EPI obrigatório selecionado." };
   if (emAndamento.has(camera.id)) return { ok: false, erro: "Envio já em andamento." };
 
   emAndamento.add(camera.id);
+  marcar({ status: "pendente", em: new Date().toISOString() });
   const ac = new AbortController();
   const t = setTimeout(() => ac.abort(), 8000);
+  const falha = (erro: string): ResultadoSync => {
+    marcar({ status: "falhou", em: new Date().toISOString(), erro });
+    return { ok: false, erro };
+  };
   try {
     const r = await fetch(`${YOLO_API_URL}/cameras/config`, {
       method: "POST",
@@ -27,16 +38,18 @@ export async function enviarConfigCamera(camera: Camera, epis: EPI[]): Promise<R
       signal: ac.signal,
     });
     if (r.status === 404 || r.status === 405)
-      return { ok: false, erro: "O servidor YOLO não tem a rota /cameras/config. Atualize o server.py." };
-    if (!r.ok) return { ok: false, erro: `Servidor YOLO respondeu HTTP ${r.status}.` };
+      return falha("O servidor YOLO não tem a rota /cameras/config. Atualize o server.py.");
+    if (!r.ok) return falha(`Servidor YOLO respondeu HTTP ${r.status}.`);
+    const j = (await r.json().catch(() => null)) as { ok?: boolean; camera_id?: string } | null;
+    if (!j?.ok || j.camera_id !== camera.id) return falha("Servidor YOLO não confirmou a configuração.");
+    marcar({ status: "enviado", em: new Date().toISOString(), enviados: payload.required_epis });
     return { ok: true };
   } catch (e) {
-    return {
-      ok: false,
-      erro: (e as Error).name === "AbortError"
+    return falha(
+      (e as Error).name === "AbortError"
         ? "Tempo esgotado ao contactar o servidor YOLO."
         : "Servidor YOLO inacessível (offline ou fora da rede).",
-    };
+    );
   } finally {
     clearTimeout(t);
     emAndamento.delete(camera.id);

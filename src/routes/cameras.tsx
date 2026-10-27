@@ -28,6 +28,17 @@ import { enviarConfigCamera } from "@/lib/camera-config-sync";
 
 export const Route = createFileRoute("/cameras")({ component: Cameras });
 
+/** Envia (fora do loop de vídeo) os EPIs obrigatórios da câmera salva ao servidor YOLO. */
+function sincronizar(cameraId: string) {
+  const cam = store.get().cameras.find((x) => x.id === cameraId);
+  if (!cam) return Promise.resolve();
+  const tId = toast.loading("Enviando EPIs obrigatórios ao servidor YOLO…");
+  return enviarConfigCamera(cam, store.getEpis()).then((r) => {
+    if (r.ok) toast.success("Servidor YOLO confirmou os EPIs obrigatórios.", { id: tId });
+    else toast.error(`Câmera salva localmente, mas o envio ao servidor YOLO falhou: ${r.erro}`, { id: tId, duration: 8000 });
+  });
+}
+
 function CameraCard({ c }: { c: Camera }) {
   const on = c.status === "online";
   const [ia, setIa] = useState(false);
@@ -259,12 +270,31 @@ function CameraCard({ c }: { c: Camera }) {
               : catsCam.map((k) => <Badge key={k} variant="secondary">{k}</Badge>)}
           </div>
           {!episPayload.ok && <p className="text-[11px] text-destructive mt-1">{episPayload.erro}</p>}
+          {catsCam.length > 0 && (
+            <div className="flex items-center justify-between gap-2 mt-1">
+              <p className={`text-[11px] ${c.syncYolo?.status === "enviado" ? "text-success" : c.syncYolo?.status === "falhou" ? "text-destructive" : "text-muted-foreground"}`}>
+                {c.syncYolo?.status === "enviado"
+                  ? `Servidor YOLO confirmou (${new Date(c.syncYolo.em).toLocaleString("pt-BR")})`
+                  : c.syncYolo?.status === "falhou"
+                    ? `Sincronização falhou: ${c.syncYolo.erro}`
+                    : c.syncYolo?.status === "pendente" ? "Enviando ao servidor YOLO…" : "Ainda não enviado ao servidor YOLO"}
+              </p>
+              {c.syncYolo?.status !== "enviado" && c.syncYolo?.status !== "pendente" && (
+                <Button size="sm" variant="ghost" className="h-7 text-[11px]" onClick={() => void sincronizar(c.id)}>Reenviar</Button>
+              )}
+            </div>
+          )}
           <EpiSelector
             open={selOpen}
             onOpenChange={setSelOpen}
             value={catsCam}
-            onConfirm={(cats) => { store.updateCamera(c.id, { categoriasObrigatorias: cats, episObrigatorios: [] }); toast.success("Categorias da câmera salvas"); }}
+            onConfirm={(cats) => {
+              store.updateCamera(c.id, { categoriasObrigatorias: cats, episObrigatorios: [] });
+              toast.success("Categorias da câmera salvas");
+              if (cats.length) void sincronizar(c.id);
+            }}
           />
+
         </div>
 
         <div className="flex items-center justify-between mt-3 pt-3 border-t border-border">
@@ -355,13 +385,8 @@ function Cameras() {
     const escolhida = dispositivos.find((d) => `device:${d.deviceId}` === form.url);
     const nome = form.nome.trim() || escolhida?.label || "Câmera do notebook";
     const nova = store.addCamera({ ...form, nome });
-    if (nova.categoriasObrigatorias?.length) {
-      const tId = toast.loading("Enviando EPIs obrigatórios ao servidor YOLO…");
-      void enviarConfigCamera(nova, store.getEpis()).then((r) => {
-        if (r.ok) toast.success("Câmera salva e EPIs obrigatórios enviados ao servidor YOLO.", { id: tId });
-        else toast.error(`Câmera salva, mas o envio ao servidor YOLO falhou: ${r.erro}`, { id: tId, duration: 8000 });
-      });
-    }
+    toast.success(`Câmera "${nome}" salva localmente.`);
+    if (nova.categoriasObrigatorias?.length) void sincronizar(nova.id);
     setForm({ nome: "", setor: "", tipo: "Entrada", area: "Segura", url: "", status: "online", fps: 30, categoriasObrigatorias: [] });
     setOpen(false);
   };
