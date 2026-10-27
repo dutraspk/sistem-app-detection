@@ -385,13 +385,8 @@ function Cameras() {
     const escolhida = dispositivos.find((d) => `device:${d.deviceId}` === form.url);
     const nome = form.nome.trim() || escolhida?.label || "Câmera do notebook";
     const nova = store.addCamera({ ...form, nome });
-    if (nova.categoriasObrigatorias?.length) {
-      const tId = toast.loading("Enviando EPIs obrigatórios ao servidor YOLO…");
-      void enviarConfigCamera(nova, store.getEpis()).then((r) => {
-        if (r.ok) toast.success("Câmera salva e EPIs obrigatórios enviados ao servidor YOLO.", { id: tId });
-        else toast.error(`Câmera salva, mas o envio ao servidor YOLO falhou: ${r.erro}`, { id: tId, duration: 8000 });
-      });
-    }
+    toast.success(`Câmera "${nome}" salva localmente.`);
+    if (nova.categoriasObrigatorias?.length) void sincronizar(nova.id);
     setForm({ nome: "", setor: "", tipo: "Entrada", area: "Segura", url: "", status: "online", fps: 30, categoriasObrigatorias: [] });
     setOpen(false);
   };
