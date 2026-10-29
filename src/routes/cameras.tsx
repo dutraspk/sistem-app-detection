@@ -501,7 +501,11 @@ function CameraCampos({ form, setForm, dispositivos, permErro, onAtualizar }: {
 function Cameras() {
   const cameras = useStore("cameras");
   const [open, setOpen] = useState(false);
-
+  const [form, setForm] = useState<FormCamera>({
+    nome: "", setor: "", tipo: "Entrada", area: "Segura",
+    url: "", status: "online", fps: 30, categoriasObrigatorias: [],
+  });
+  const { dispositivos, permErro, carregarDispositivos } = useDispositivos();
 
   const abrir = (v: boolean) => {
     setOpen(v);
