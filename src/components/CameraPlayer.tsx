@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { interpretarHealth, statusDe, MSG_INACESSIVEL, MSG_SEM_MODELO, type EstadoYolo, type StatusYolo } from "@/lib/yolo-health";
 
 export const YOLO_API_URL = "https://desktop-oi01buo.tail1dea31.ts.net";
 
@@ -8,7 +9,7 @@ type Props = {
   yoloAtivo?: boolean;
   /** Requisições por segundo (aprox.). */
   fps?: number;
-  onStatus?: (s: { online: boolean; erro: string | null }) => void;
+  onStatus?: (s: StatusYolo) => void;
   /** Chamado quando o servidor YOLO informa EPIs detectados/faltando. */
   onDeteccao?: (d: { detectados: string[]; faltando: string[]; frame?: string; ocorreuEm: string }) => void;
   /** Intervalo fixo (ms) entre o fim de uma análise e o início da próxima. */
@@ -150,7 +151,7 @@ export const CameraPlayer = ({
         if (url) URL.revokeObjectURL(url);
         return null;
       });
-      onStatusRef.current?.({ online: false, erro: null });
+      onStatusRef.current?.(statusDe(null, null, null));
       return;
     }
 
@@ -160,19 +161,34 @@ export const CameraPlayer = ({
     const controllers = new Set<AbortController>();
     const canvas = document.createElement("canvas");
 
+    // Conectividade (health/detect) e configuração de EPIs são estados independentes.
+    let estado: EstadoYolo | null = null;
+    let erroConexao: string | null = null;
+    let configErro: string | null = null;
+    const emitir = () => onStatusRef.current?.(statusDe(estado, erroConexao, configErro));
+    const setConexao = (e: EstadoYolo, msg: string | null) => {
+      estado = e;
+      erroConexao = msg;
+      emitir();
+    };
+
     const checarSaude = async () => {
       const ac = new AbortController();
       controllers.add(ac);
       const t = setTimeout(() => ac.abort(), 4000);
+      let resp: { httpOk: boolean; json: unknown } | null = null;
       try {
         const r = await fetch(`${YOLO_API_URL}/health`, { signal: ac.signal });
-        if (vivo) onStatusRef.current?.({ online: r.ok, erro: r.ok ? null : "IA local offline — inicie o servidor YOLO no notebook" });
+        resp = { httpOk: r.ok, json: await r.json().catch(() => null) };
       } catch {
-        if (vivo) onStatusRef.current?.({ online: false, erro: "IA local offline — inicie o servidor YOLO no notebook" });
+        resp = null;
       } finally {
         clearTimeout(t);
         controllers.delete(ac);
       }
+      if (!vivo) return;
+      const h = interpretarHealth(resp);
+      setConexao(h.estado, h.erro);
     };
 
     void checarSaude();
@@ -203,9 +219,16 @@ export const CameraPlayer = ({
 
         const cfg = episRef.current;
         if (cfg && !cfg.ok) {
-          const err = new Error(cfg.erro);
-          err.name = "ConfigError";
-          throw err;
+          // Erro de configuração: não envia o frame e NÃO altera a conectividade.
+          if (configErro !== cfg.erro) {
+            configErro = cfg.erro;
+            emitir();
+          }
+          return;
+        }
+        if (configErro) {
+          configErro = null;
+          emitir();
         }
         const fd = new FormData();
         fd.append("file", blob, "frame.jpg");
@@ -217,7 +240,10 @@ export const CameraPlayer = ({
           body: fd,
           signal: ac.signal,
         });
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        if (!r.ok) {
+          if (vivo) setConexao("modelo_indisponivel", `${MSG_SEM_MODELO} (/detect respondeu HTTP ${r.status})`);
+          return;
+        }
 
         const lista = (v: string | null) =>
           (v ?? "")
@@ -238,20 +264,13 @@ export const CameraPlayer = ({
         if (objectUrl) URL.revokeObjectURL(objectUrl);
         objectUrl = url;
         setProcessada(url);
-        onStatusRef.current?.({ online: true, erro: null });
+        if (estado !== "pronto") setConexao("pronto", null);
         if (detectados.length || faltando.length) {
           onDeteccaoRef.current?.({ detectados, faltando, frame: frameUrl, ocorreuEm });
         }
 
       } catch (e) {
-        if (vivo && (e as Error).name !== "AbortError") {
-          onStatusRef.current?.({
-            online: false,
-            erro: (e as Error).name === "ConfigError"
-              ? `Configuração: ${(e as Error).message}`
-              : "IA local offline — inicie o servidor YOLO no notebook",
-          });
-        }
+        if (vivo && (e as Error).name !== "AbortError") setConexao("inacessivel", MSG_INACESSIVEL);
       } finally {
         controllers.delete(ac);
         ocupado = false;
