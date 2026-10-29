@@ -21,6 +21,13 @@ export function gerarMapeamento(epis: EPI[]) {
   };
 }
 
+/** EPIs cujo external_name está ausente ou fora do formato aceito (ex.: "helmet"). */
+export function episSemMapeamento(epis: EPI[]): EPI[] {
+  return epis.filter((e) => !externoValido(e.external_name));
+}
+
+const nomes = (l: EPI[]) => l.map((e) => `"${e.nome}"${e.external_name ? ` (atual: "${e.external_name}")` : " (vazio)"}`).join(", ");
+
 export type PayloadEpis =
   | { ok: true; required_epis: string[] }
   | { ok: false; erro: string };
@@ -34,7 +41,11 @@ export function resolverEpisCamera(camera: Camera, epis: EPI[]): PayloadEpis {
       const doCat = epis.filter((e) => e.categoria === cat);
       if (!doCat.length) return { ok: false, erro: `Categoria "${cat}" sem EPIs cadastrados. Revise a câmera.` };
       const validos = doCat.filter((e) => externoValido(e.external_name));
-      if (!validos.length) return { ok: false, erro: `Nenhum EPI da categoria "${cat}" tem nome externo válido. Configure em EPIs.` };
+      if (!validos.length)
+        return {
+          ok: false,
+          erro: `Categoria "${cat}" sem nome externo (classe YOLO) válido. Corrija em EPIs: ${nomes(episSemMapeamento(doCat))}.`,
+        };
       validos.forEach((e) => out.push(e.external_name!));
     }
     return { ok: true, required_epis: Array.from(new Set(out)) };
@@ -44,7 +55,7 @@ export function resolverEpisCamera(camera: Camera, epis: EPI[]): PayloadEpis {
     const epi = epis.find((e) => e.id === id);
     if (!epi) return { ok: false, erro: `EPI obrigatório removido do cadastro (id ${id}). Revise a câmera.` };
     if (!externoValido(epi.external_name))
-      return { ok: false, erro: `EPI "${epi.nome}" sem nome externo válido. Configure em EPIs.` };
+      return { ok: false, erro: `EPI sem nome externo (classe YOLO) válido. Corrija em EPIs: ${nomes([epi])}.` };
     out.push(epi.external_name!);
   }
   return { ok: true, required_epis: Array.from(new Set(out)) };

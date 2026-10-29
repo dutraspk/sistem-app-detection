@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import * as React from "react";
 import { useState, useCallback, useRef, useEffect } from "react";
 import { AppShell } from "@/components/AppShell";
 import { PageHeader } from "@/components/PageHeader";
@@ -14,7 +15,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Camera as CamIcon, Wifi, WifiOff, Plus, Trash2, ScanEye, Loader2, Maximize2, Minimize2, CameraOff, Repeat2, ShieldAlert } from "lucide-react";
+import { Camera as CamIcon, Wifi, WifiOff, Plus, Trash2, ScanEye, Loader2, Maximize2, Minimize2, CameraOff, Repeat2, ShieldAlert, Pencil } from "lucide-react";
 import { useStore, store } from "@/lib/store";
 import { CameraPlayer } from "@/components/CameraPlayer";
 import { Switch } from "@/components/ui/switch";
@@ -23,6 +24,8 @@ import type { Camera } from "@/lib/mock-data";
 import { EpiSelector } from "@/components/EpiSelector";
 import { resolverEpisCamera } from "@/lib/epi-mapping";
 import { enviarConfigCamera } from "@/lib/camera-config-sync";
+import { salvarEdicaoCamera, validarCamera } from "@/lib/camera-edit";
+import type { StatusYolo } from "@/lib/yolo-health";
 
 
 
@@ -35,17 +38,21 @@ function sincronizar(cameraId: string) {
   const tId = toast.loading("Enviando EPIs obrigatórios ao servidor YOLO…");
   return enviarConfigCamera(cam, store.getEpis()).then((r) => {
     if (r.ok) toast.success("Servidor YOLO confirmou os EPIs obrigatórios.", { id: tId });
-    else toast.error(`Câmera salva localmente, mas o envio ao servidor YOLO falhou: ${r.erro}`, { id: tId, duration: 8000 });
+    else toast.error(`Câmera salva, mas a configuração NÃO foi sincronizada com a YOLO (use "Reenviar"): ${r.erro}`, { id: tId, duration: 8000 });
   });
+}
+
+function formDe(c: Camera): FormCamera {
+  return {
+    nome: c.nome, setor: c.setor ?? "", tipo: c.tipo, area: c.area ?? "Segura",
+    url: c.url, status: c.status, fps: c.fps, categoriasObrigatorias: c.categoriasObrigatorias ?? [],
+  };
 }
 
 function CameraCard({ c }: { c: Camera }) {
   const on = c.status === "online";
   const [ia, setIa] = useState(false);
-  const [status, setStatus] = useState<{ online: boolean; erro: string | null }>({
-    online: false,
-    erro: null,
-  });
+  const [status, setStatus] = useState<StatusYolo>({ online: false, estado: null, erro: null, configErro: null });
   const [ultimo, setUltimo] = useState<string | null>(null);
   const ultimaOcorrencia = useRef(0);
   const [ligada, setLigada] = useState(true);
@@ -60,6 +67,30 @@ function CameraCard({ c }: { c: Camera }) {
   const catsCam = c.categoriasObrigatorias?.length
     ? c.categoriasObrigatorias
     : Array.from(new Set(epis.filter((e) => c.episObrigatorios?.includes(e.id)).map((e) => e.categoria as string)));
+
+  const [editOpen, setEditOpen] = useState(false);
+  const [salvando, setSalvando] = useState(false);
+  const [editForm, setEditForm] = useState<FormCamera>(() => formDe(c));
+  const disp = useDispositivos();
+  const abrirEdicao = () => {
+    setEditForm(formDe({ ...c, categoriasObrigatorias: catsCam }));
+    setEditOpen(true);
+    void disp.carregarDispositivos();
+  };
+  const salvarEdicao = async () => {
+    setSalvando(true);
+    const tId = toast.loading("Salvando câmera…");
+    try {
+      const r = await salvarEdicaoCamera(c.id, { ...editForm, fps: Number(editForm.fps) });
+      if (!r.salvo) { toast.error(`Câmera não salva: ${r.erro}`, { id: tId }); return; }
+      setEditOpen(false);
+      if (!r.sync) toast.success("Câmera salva. Sem categorias obrigatórias — nada a sincronizar.", { id: tId });
+      else if (r.sync.ok) toast.success("Câmera salva e configuração sincronizada com a YOLO.", { id: tId });
+      else toast.error(`Câmera salva, mas a configuração NÃO foi sincronizada (use "Reenviar"): ${r.sync.erro}`, { id: tId, duration: 8000 });
+    } finally {
+      setSalvando(false);
+    }
+  };
 
   useEffect(() => {
     const onFs = () => setFullscreen(document.fullscreenElement === boxRef.current);
@@ -76,8 +107,9 @@ function CameraCard({ c }: { c: Camera }) {
     }
   };
 
-  const onStatus = useCallback((s: { online: boolean; erro: string | null }) => {
+  const onStatus = useCallback((s: StatusYolo) => {
     setStatus(s);
+    if (s.estado === null) return; // ainda sem verificação de conectividade
     if (iaOnlineRef.current !== null && iaOnlineRef.current !== s.online) {
       if (!s.online) {
         store.addNotificacao({
@@ -186,7 +218,7 @@ function CameraCard({ c }: { c: Camera }) {
                 }`}
               >
                 {status.online ? <ScanEye className="w-3 h-3" /> : <Loader2 className="w-3 h-3 animate-spin" />}
-                {status.online ? "IA Online" : "IA Offline"}
+                {status.online ? "IA Online" : status.estado === "modelo_indisponivel" ? "Modelo indisponível" : status.estado === "inacessivel" ? "IA Offline" : "Verificando…"}
               </div>
             )}
             <div className="absolute bottom-3 left-3 right-3 z-10 flex items-center justify-between text-[10px] text-white/70 pointer-events-none">
@@ -238,6 +270,10 @@ function CameraCard({ c }: { c: Camera }) {
             {on
               ? <Badge className="bg-success/15 text-success border-success/30 hover:bg-success/15"><Wifi className="w-3 h-3 mr-1" />Online</Badge>
               : <Badge className="bg-muted text-muted-foreground border-border">Offline</Badge>}
+            <button onClick={abrirEdicao} aria-label="Editar câmera"
+              className="p-1.5 rounded-md hover:bg-primary/10 text-muted-foreground hover:text-primary">
+              <Pencil className="w-3.5 h-3.5" />
+            </button>
             <button onClick={() => store.removeCamera(c.id)}
               className="p-1.5 rounded-md hover:bg-destructive/10 text-muted-foreground hover:text-destructive">
               <Trash2 className="w-3.5 h-3.5" />
@@ -284,6 +320,17 @@ function CameraCard({ c }: { c: Camera }) {
               )}
             </div>
           )}
+          <Dialog open={editOpen} onOpenChange={setEditOpen}>
+            <DialogContent>
+              <DialogHeader><DialogTitle>Editar câmera</DialogTitle></DialogHeader>
+              <CameraCampos form={editForm} setForm={setEditForm} dispositivos={disp.dispositivos}
+                permErro={disp.permErro} onAtualizar={() => void disp.carregarDispositivos()} />
+              <DialogFooter>
+                <Button variant="secondary" onClick={() => setEditOpen(false)}>Cancelar</Button>
+                <Button onClick={() => void salvarEdicao()} disabled={salvando}>Salvar alterações</Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
           <EpiSelector
             open={selOpen}
             onOpenChange={setSelOpen}
@@ -315,9 +362,12 @@ function CameraCard({ c }: { c: Camera }) {
               {!ia
                 ? "Desligada"
                 : status.online
-                  ? (ultimo ?? "IA Online — enviando ~5 frames/s ao YOLO local")
+                  ? (status.configErro ? "IA Online — análise pausada até corrigir os EPIs" : (ultimo ?? "IA Online — análise a cada 4,5 s"))
                   : (status.erro ?? "Conectando ao servidor YOLO local…")}
             </p>
+            {ia && status.configErro && (
+              <p className="text-[11px] text-destructive">Configuração dos EPIs: {status.configErro}</p>
+            )}
 
 
           </div>
@@ -329,19 +379,9 @@ function CameraCard({ c }: { c: Camera }) {
 }
 
 
-function Cameras() {
-  const cameras = useStore("cameras");
-  const [open, setOpen] = useState(false);
+function useDispositivos() {
   const [dispositivos, setDispositivos] = useState<MediaDeviceInfo[]>([]);
   const [permErro, setPermErro] = useState<string | null>(null);
-  const [form, setForm] = useState({
-    nome: "", setor: "", tipo: "Entrada" as "Entrada" | "Interna",
-    area: "Segura" as "Risco" | "Segura",
-    url: "", status: "online" as "online" | "offline", fps: 30,
-    categoriasObrigatorias: [] as string[],
-  });
-  const [selNovo, setSelNovo] = useState(false);
-
   const carregarDispositivos = useCallback(async () => {
     setPermErro(null);
     if (typeof navigator === "undefined" || !navigator.mediaDevices?.enumerateDevices) {
@@ -373,7 +413,99 @@ function Cameras() {
       setDispositivos([]);
     }
   }, []);
+  return { dispositivos, permErro, carregarDispositivos };
+}
 
+type FormCamera = {
+  nome: string; setor: string; tipo: "Entrada" | "Interna"; area: "Risco" | "Segura";
+  url: string; status: "online" | "offline"; fps: number; categoriasObrigatorias: string[];
+};
+
+/** Campos do formulário de câmera, compartilhados entre cadastro e edição. */
+function CameraCampos({ form, setForm, dispositivos, permErro, onAtualizar }: {
+  form: FormCamera;
+  setForm: React.Dispatch<React.SetStateAction<FormCamera>>;
+  dispositivos: MediaDeviceInfo[];
+  permErro: string | null;
+  onAtualizar: () => void;
+}) {
+  const [selCats, setSelCats] = useState(false);
+  const atualNaLista = !form.url || dispositivos.some((d) => `device:${d.deviceId}` === form.url);
+  return (
+    <div className="space-y-3">
+      <div>
+        <Label>Câmera conectada</Label>
+        <Select value={form.url} onValueChange={v => setForm((f) => ({ ...f, url: v }))}>
+          <SelectTrigger><SelectValue placeholder="Selecione a câmera" /></SelectTrigger>
+          <SelectContent>
+            {dispositivos.map((d, i) => (
+              <SelectItem key={d.deviceId || i} value={`device:${d.deviceId}`}>
+                {d.label || `Câmera ${i + 1}`}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <div className="flex items-center gap-2 mt-1">
+          <p className="text-[11px] text-muted-foreground flex-1">
+            {permErro ?? "Detectadas automaticamente do seu notebook — sem IP ou configuração."}
+          </p>
+          <Button size="sm" variant="ghost" onClick={onAtualizar}>Atualizar</Button>
+        </div>
+      </div>
+      <div><Label>Nome (opcional)</Label><Input value={form.nome} onChange={e => setForm((f) => ({ ...f, nome: e.target.value }))} placeholder="Ex.: Entrada Forno A" /></div>
+      <div><Label>Setor</Label><Input value={form.setor} onChange={e => setForm((f) => ({ ...f, setor: e.target.value }))} /></div>
+      <div>
+        <Label>Tipo</Label>
+        <Select value={form.tipo} onValueChange={v => setForm((f) => ({ ...f, tipo: v as "Entrada" | "Interna" }))}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="Entrada">Entrada</SelectItem>
+            <SelectItem value="Interna">Interna</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <div>
+        <Label>Classificação da área</Label>
+        <Select value={form.area} onValueChange={v => setForm((f) => ({ ...f, area: v as "Risco" | "Segura" }))}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="Segura">Área segura</SelectItem>
+            <SelectItem value="Risco">Área de risco</SelectItem>
+          </SelectContent>
+        </Select>
+        <p className="text-[11px] text-muted-foreground mt-1">
+          Em área de risco, toda falta de EPI gera obrigatoriamente uma ocorrência.
+        </p>
+      </div>
+      <div className="flex flex-col items-center gap-2 rounded-md border border-border p-3 text-center">
+        <Label>Categorias de EPI obrigatórias</Label>
+        <div className="flex flex-wrap justify-center items-center gap-1">
+          {form.categoriasObrigatorias.map((k) => (
+            <Badge key={k} variant="secondary">{k}</Badge>
+          ))}
+          <Button size="sm" variant="outline" className="h-7 text-[11px]" onClick={() => setSelCats(true)}>
+            Selecionar categorias ({form.categoriasObrigatorias.length})
+          </Button>
+        </div>
+        <EpiSelector
+          open={selCats}
+          onOpenChange={setSelCats}
+          value={form.categoriasObrigatorias}
+          onConfirm={(cats) => setForm((f) => ({ ...f, categoriasObrigatorias: cats }))}
+        />
+      </div>
+    </div>
+  );
+}
+
+function Cameras() {
+  const cameras = useStore("cameras");
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState<FormCamera>({
+    nome: "", setor: "", tipo: "Entrada", area: "Segura",
+    url: "", status: "online", fps: 30, categoriasObrigatorias: [],
+  });
+  const { dispositivos, permErro, carregarDispositivos } = useDispositivos();
 
   const abrir = (v: boolean) => {
     setOpen(v);
@@ -384,6 +516,8 @@ function Cameras() {
     if (!form.url) return;
     const escolhida = dispositivos.find((d) => `device:${d.deviceId}` === form.url);
     const nome = form.nome.trim() || escolhida?.label || "Câmera do notebook";
+    const erro = validarCamera({ ...form, nome });
+    if (erro) { toast.error(erro); return; }
     const nova = store.addCamera({ ...form, nome });
     toast.success(`Câmera "${nome}" salva localmente.`);
     if (nova.categoriasObrigatorias?.length) void sincronizar(nova.id);
@@ -400,69 +534,13 @@ function Cameras() {
           </DialogTrigger>
           <DialogContent>
             <DialogHeader><DialogTitle>Adicionar câmera</DialogTitle></DialogHeader>
-            <div className="space-y-3">
-              <div>
-                <Label>Câmera conectada</Label>
-                <Select value={form.url} onValueChange={v => setForm({ ...form, url: v })}>
-                  <SelectTrigger><SelectValue placeholder="Selecione a câmera" /></SelectTrigger>
-                  <SelectContent>
-                    {dispositivos.map((d, i) => (
-                      <SelectItem key={d.deviceId || i} value={`device:${d.deviceId}`}>
-                        {d.label || `Câmera ${i + 1}`}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <div className="flex items-center gap-2 mt-1">
-                  <p className="text-[11px] text-muted-foreground flex-1">
-                    {permErro ?? "Detectadas automaticamente do seu notebook — sem IP ou configuração."}
-                  </p>
-                  <Button size="sm" variant="ghost" onClick={() => void carregarDispositivos()}>Atualizar</Button>
-                </div>
-              </div>
-              <div><Label>Nome (opcional)</Label><Input value={form.nome} onChange={e => setForm({ ...form, nome: e.target.value })} placeholder="Ex.: Entrada Forno A" /></div>
-              <div><Label>Setor</Label><Input value={form.setor} onChange={e => setForm({ ...form, setor: e.target.value })} /></div>
-              <div>
-                <Label>Tipo</Label>
-                <Select value={form.tipo} onValueChange={v => setForm({ ...form, tipo: v as "Entrada" | "Interna" })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Entrada">Entrada</SelectItem>
-                    <SelectItem value="Interna">Interna</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Classificação da área</Label>
-                <Select value={form.area} onValueChange={v => setForm({ ...form, area: v as "Risco" | "Segura" })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Segura">Área segura</SelectItem>
-                    <SelectItem value="Risco">Área de risco</SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-[11px] text-muted-foreground mt-1">
-                  Em área de risco, toda falta de EPI gera obrigatoriamente uma ocorrência.
-                </p>
-              </div>
-              <div className="flex flex-col items-center gap-2 rounded-md border border-border p-3 text-center">
-                <Label>Categorias de EPI obrigatórias</Label>
-                <div className="flex flex-wrap justify-center items-center gap-1">
-                  {form.categoriasObrigatorias.map((k) => (
-                    <Badge key={k} variant="secondary">{k}</Badge>
-                  ))}
-                  <Button size="sm" variant="outline" className="h-7 text-[11px]" onClick={() => setSelNovo(true)}>
-                    Selecionar categorias ({form.categoriasObrigatorias.length})
-                  </Button>
-                </div>
-                <EpiSelector
-                  open={selNovo}
-                  onOpenChange={setSelNovo}
-                  value={form.categoriasObrigatorias}
-                  onConfirm={(cats) => setForm((f) => ({ ...f, categoriasObrigatorias: cats }))}
-                />
-              </div>
-            </div>
+            <CameraCampos
+              form={form}
+              setForm={setForm}
+              dispositivos={dispositivos}
+              permErro={permErro}
+              onAtualizar={() => void carregarDispositivos()}
+            />
             <DialogFooter>
               <Button variant="secondary" onClick={() => setOpen(false)}>Cancelar</Button>
               <Button onClick={submit} disabled={!form.url}>Salvar</Button>
