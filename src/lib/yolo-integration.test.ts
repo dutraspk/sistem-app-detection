@@ -100,3 +100,14 @@ describe("edição de câmera + sincronização", () => {
     expect((await enviarConfigCamera(store.get().cameras[0], store.getEpis())).ok).toBe(false);
   });
 });
+
+import { resolverYoloUrl } from "./yolo-config";
+describe("URL da YOLO", () => {
+  it("sem variável usa http://127.0.0.1:6941 (nunca Tailscale)", () => {
+    expect(resolverYoloUrl(undefined)).toBe("http://127.0.0.1:6941");
+    expect(resolverYoloUrl("  ")).toBe("http://127.0.0.1:6941");
+  });
+  it("respeita VITE_YOLO_API_URL sem barra final", () => {
+    expect(resolverYoloUrl("https://x.ts.net/")).toBe("https://x.ts.net");
+  });
+});

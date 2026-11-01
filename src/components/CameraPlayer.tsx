@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { interpretarHealth, statusDe, MSG_INACESSIVEL, MSG_SEM_MODELO, type EstadoYolo, type StatusYolo } from "@/lib/yolo-health";
 
-export const YOLO_API_URL = "https://desktop-oi01buo.tail1dea31.ts.net";
+import { YOLO_API_URL } from "@/lib/yolo-config";
+export { YOLO_API_URL };
 
 type Props = {
   streamUrl: string;
