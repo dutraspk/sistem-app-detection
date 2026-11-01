@@ -1,19 +1,19 @@
 import { useEffect, useRef, useState } from "react";
-import { interpretarHealth, statusDe, MSG_INACESSIVEL, MSG_SEM_MODELO, type EstadoYolo, type StatusYolo } from "@/lib/yolo-health";
+import { interpretarHealth, statusDe, MSG_INACESSIVEL, type EstadoYolo, type StatusYolo } from "@/lib/yolo-health";
 
 import { YOLO_API_URL } from "@/lib/yolo-config";
 export { YOLO_API_URL };
 
 type Props = {
   streamUrl: string;
-  /** Liga o envio de frames para o servidor YOLO local. */
+  /** Liga a exibição do stream processado pela IA (MJPEG do servidor YOLO). */
   yoloAtivo?: boolean;
   /** Requisições por segundo (aprox.). */
   fps?: number;
   onStatus?: (s: StatusYolo) => void;
   /** Chamado quando o servidor YOLO informa EPIs detectados/faltando. */
   onDeteccao?: (d: { detectados: string[]; faltando: string[]; frame?: string; ocorreuEm: string }) => void;
-  /** Intervalo fixo (ms) entre o fim de uma análise e o início da próxima. */
+  /** Intervalo fixo (ms) entre consultas ao endpoint /detections. */
   intervaloMs?: number;
   /** Falha ao abrir/manter a câmera. */
   onCameraErro?: (msg: string) => void;
@@ -27,25 +27,36 @@ type Props = {
   episPayload?: { ok: true; required_epis: string[] } | { ok: false; erro: string };
 };
 
+/** Converte o JSON de GET /detections em listas de EPIs (aceita variações de nomes de campo). */
+export function interpretarDeteccoes(json: unknown): { detectados: string[]; faltando: string[] } | null {
+  if (!json || typeof json !== "object") return null;
+  const j = json as Record<string, unknown>;
+  const lista = (v: unknown): string[] => {
+    if (Array.isArray(v)) return v.map((s) => String(s).trim().toLowerCase()).filter(Boolean);
+    if (typeof v === "string") return v.split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
+    return [];
+  };
+  const detectados = lista(j.detectados ?? j.detections ?? j.epis_detectados ?? j.detected);
+  const faltando = lista(j.faltando ?? j.missing ?? j.epis_faltando);
+  if (!detectados.length && !faltando.length) return null;
+  return { detectados, faltando };
+}
+
 export const CameraPlayer = ({
   streamUrl,
   yoloAtivo = false,
-  fps = 5,
   intervaloMs = 4500,
   onStatus,
   onDeteccao,
   onCameraErro,
   iaPrincipal = false,
   onAlternarPrincipal,
-  cameraId,
   episPayload,
 }: Props) => {
   const episRef = useRef(episPayload);
   episRef.current = episPayload;
-  const camIdRef = useRef(cameraId);
-  camIdRef.current = cameraId;
   const videoRef = useRef<HTMLVideoElement>(null);
-  const [processada, setProcessada] = useState<string | null>(null);
+  const [streamOk, setStreamOk] = useState(false);
   const onStatusRef = useRef(onStatus);
   onStatusRef.current = onStatus;
   const onDeteccaoRef = useRef(onDeteccao);
@@ -145,24 +156,19 @@ export const CameraPlayer = ({
     };
   }, [streamUrl]);
 
-  // Envio de frames para o YOLO local
+  // IA: stream MJPEG (/video_feed) + consulta periódica de detecções (/detections).
+  // O servidor YOLO atual NÃO possui /detect — nenhum frame é enviado pelo navegador.
   useEffect(() => {
     if (!yoloAtivo) {
-      setProcessada((url) => {
-        if (url) URL.revokeObjectURL(url);
-        return null;
-      });
+      setStreamOk(false);
       onStatusRef.current?.(statusDe(null, null, null));
       return;
     }
 
     let vivo = true;
-    let ocupado = false;
-    let objectUrl: string | null = null;
     const controllers = new Set<AbortController>();
-    const canvas = document.createElement("canvas");
 
-    // Conectividade (health/detect) e configuração de EPIs são estados independentes.
+    // Conectividade (health/video_feed) e configuração de EPIs são estados independentes.
     let estado: EstadoYolo | null = null;
     let erroConexao: string | null = null;
     let configErro: string | null = null;
@@ -195,95 +201,53 @@ export const CameraPlayer = ({
     void checarSaude();
     const healthTimer = setInterval(() => void checarSaude(), 10000);
 
-    let frameUrl: string | undefined;
-    const enviar = async () => {
-      if (!vivo || ocupado) return;
-      const video = videoRef.current;
-      if (!video || !video.videoWidth) return;
-      const ocorreuEm = new Date().toISOString();
-      ocupado = true;
-      const ac = new AbortController();
-      controllers.add(ac);
-      try {
-        const escala = Math.min(1, 640 / video.videoWidth);
-        canvas.width = Math.round(video.videoWidth * escala);
-        canvas.height = Math.round(video.videoHeight * escala);
-        const ctx = canvas.getContext("2d");
-        if (!ctx) return;
-        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-        const blob = await new Promise<Blob | null>((res) =>
-          canvas.toBlob(res, "image/jpeg", 0.7),
-        );
-        if (!blob || !vivo) return;
-        frameUrl = canvas.toDataURL("image/jpeg", 0.5);
-
-        const cfg = episRef.current;
-        if (cfg && !cfg.ok) {
-          // Erro de configuração: não envia o frame e NÃO altera a conectividade.
-          if (configErro !== cfg.erro) {
-            configErro = cfg.erro;
-            emitir();
-          }
-          return;
-        }
-        if (configErro) {
-          configErro = null;
+    const consultarDeteccoes = async () => {
+      if (!vivo) return;
+      const cfg = episRef.current;
+      if (cfg && !cfg.ok) {
+        // Erro de configuração: não consulta e NÃO altera a conectividade.
+        if (configErro !== cfg.erro) {
+          configErro = cfg.erro;
           emitir();
         }
-        const fd = new FormData();
-        fd.append("file", blob, "frame.jpg");
-        if (camIdRef.current) fd.append("camera_id", camIdRef.current);
-        if (cfg?.ok) fd.append("required_epis", JSON.stringify(cfg.required_epis));
-
-        const r = await fetch(`${YOLO_API_URL}/detect`, {
-          method: "POST",
-          body: fd,
-          signal: ac.signal,
+        return;
+      }
+      if (configErro) {
+        configErro = null;
+        emitir();
+      }
+      const ac = new AbortController();
+      controllers.add(ac);
+      const t = setTimeout(() => ac.abort(), 4000);
+      try {
+        const r = await fetch(`${YOLO_API_URL}/detections`, { signal: ac.signal });
+        if (!r.ok || !vivo) return;
+        const d = interpretarDeteccoes(await r.json().catch(() => null));
+        if (!d || !vivo) return;
+        // Se o servidor não informar os faltantes, calcula a partir dos EPIs obrigatórios.
+        const faltando = d.faltando.length
+          ? d.faltando
+          : cfg?.ok
+            ? cfg.required_epis.filter((e) => !d.detectados.includes(e.toLowerCase()))
+            : [];
+        onDeteccaoRef.current?.({
+          detectados: d.detectados,
+          faltando,
+          ocorreuEm: new Date().toISOString(),
         });
-        if (!r.ok) {
-          if (vivo) setConexao("modelo_indisponivel", `${MSG_SEM_MODELO} (/detect respondeu HTTP ${r.status})`);
-          return;
-        }
-
-        const lista = (v: string | null) =>
-          (v ?? "")
-            .split(",")
-            .map((s) => s.trim().toLowerCase())
-            .filter(Boolean);
-
-        const detectados = lista(
-          r.headers.get("x-detections") ?? r.headers.get("x-epis-detectados"),
-        );
-        const faltando = lista(
-          r.headers.get("x-missing") ?? r.headers.get("x-epis-faltando"),
-        );
-
-        const out = await r.blob();
-        if (!vivo) return;
-        const url = URL.createObjectURL(out);
-        if (objectUrl) URL.revokeObjectURL(objectUrl);
-        objectUrl = url;
-        setProcessada(url);
-        if (estado !== "pronto") setConexao("pronto", null);
-        if (detectados.length || faltando.length) {
-          onDeteccaoRef.current?.({ detectados, faltando, frame: frameUrl, ocorreuEm });
-        }
-
-      } catch (e) {
-        if (vivo && (e as Error).name !== "AbortError") setConexao("inacessivel", MSG_INACESSIVEL);
+      } catch {
+        // Falha de rede em /detections já é coberta pelo /health periódico.
       } finally {
+        clearTimeout(t);
         controllers.delete(ac);
-        ocupado = false;
       }
     };
 
-    // Ciclo sequencial: análise → aguarda intervaloMs completos → próxima análise.
-    // Nunca há duas análises simultâneas.
+    // Ciclo sequencial: consulta → aguarda intervaloMs completos → próxima consulta.
     let timer: ReturnType<typeof setTimeout> | undefined;
     const ciclo = async () => {
       if (!vivo) return;
-      await enviar();
+      await consultarDeteccoes();
       if (vivo) timer = setTimeout(() => void ciclo(), intervaloMs);
     };
     timer = setTimeout(() => void ciclo(), 500);
@@ -293,12 +257,11 @@ export const CameraPlayer = ({
       clearTimeout(timer);
       clearInterval(healthTimer);
       controllers.forEach((c) => c.abort());
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
-      setProcessada(null);
+      setStreamOk(false);
     };
   }, [yoloAtivo, intervaloMs]);
 
-  const mostrarIa = yoloAtivo && !!processada;
+  const mostrarIa = yoloAtivo;
   const grandeIa = mostrarIa && iaPrincipal;
 
   return (
@@ -322,8 +285,16 @@ export const CameraPlayer = ({
       />
       {mostrarIa && (
         <img
-          src={processada!}
-          alt="Frame com detecções do YOLO"
+          src={`${YOLO_API_URL}/video_feed`}
+          alt="Vídeo da câmera com detecções do YOLO"
+          onLoad={() => {
+            setStreamOk(true);
+            onStatusRef.current?.(statusDe("pronto", null, null));
+          }}
+          onError={() => {
+            setStreamOk(false);
+            onStatusRef.current?.(statusDe("inacessivel", MSG_INACESSIVEL, null));
+          }}
           onClick={grandeIa ? undefined : onAlternarPrincipal}
           className={
             grandeIa
@@ -331,6 +302,11 @@ export const CameraPlayer = ({
               : "absolute bottom-2 right-2 z-20 w-1/3 max-w-[180px] rounded-md border border-border/60 shadow-lg cursor-pointer"
           }
         />
+      )}
+      {mostrarIa && !streamOk && !grandeIa && (
+        <div className="absolute bottom-2 right-2 z-10 text-[10px] text-muted-foreground bg-background/70 rounded px-2 py-1 pointer-events-none">
+          Conectando ao stream da IA…
+        </div>
       )}
     </>
   );
