@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach, vi } from "vitest";
-import { Route } from "./eventos";
+import { Route } from "@/routes/api/public/eventos";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const handlers = (Route.options as any).server.handlers;

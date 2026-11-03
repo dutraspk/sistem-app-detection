@@ -100,3 +100,13 @@ describe("edição de câmera + sincronização", () => {
     expect((await enviarConfigCamera(store.get().cameras[0], store.getEpis())).ok).toBe(false);
   });
 });
+
+import { normalizarYoloUrl } from "./yolo-config";
+describe("URL da YOLO", () => {
+  it("padrão é o servidor local, nunca o Tailscale", () => {
+    expect(normalizarYoloUrl(undefined)).toBe("http://localhost:6941");
+  });
+  it("aceita URL com /detect e usa a mesma base para todas as rotas", () => {
+    expect(normalizarYoloUrl("http://localhost:6941/detect")).toBe("http://localhost:6941");
+  });
+});
