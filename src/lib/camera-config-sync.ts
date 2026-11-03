@@ -2,7 +2,7 @@
 // Endpoint: POST {YOLO_API_URL}/cameras/config  (JSON { camera_id, required_epis })
 // O servidor YOLO fica na rede Tailscale do usuário e não exige chave, por isso a
 // chamada é feita pelo navegador (o backend na nuvem não alcança essa rede).
-import { YOLO_API_URL } from "./yolo-config";
+import { YOLO_API_URL } from "@/components/CameraPlayer";
 import type { Camera, EPI } from "./mock-data";
 import { resolverEpisCamera } from "./epi-mapping";
 import { store } from "./store";

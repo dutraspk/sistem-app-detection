@@ -196,11 +196,13 @@ function CameraCard({ c }: { c: Camera }) {
             <CameraPlayer
               streamUrl={c.url}
               yoloAtivo={ia}
+              fps={5}
               onStatus={onStatus}
               onDeteccao={onDeteccao}
               onCameraErro={onCameraErro}
               iaPrincipal={iaPrincipal}
               onAlternarPrincipal={() => setIaPrincipal((v) => !v)}
+              cameraId={c.id}
               episPayload={episPayload}
             />
 
