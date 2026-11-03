@@ -236,7 +236,7 @@ export const CameraPlayer = ({
         if (camIdRef.current) fd.append("camera_id", camIdRef.current);
         if (cfg?.ok) fd.append("required_epis", JSON.stringify(cfg.required_epis));
 
-        const r = await fetch(`${YOLO_API_URL}/detect`, {
+        const r = await fetch(`${YOLO_API_URL}/detections`, {
           method: "POST",
           body: fd,
           signal: ac.signal,

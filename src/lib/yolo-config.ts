@@ -3,7 +3,7 @@
 export const YOLO_API_URL_PADRAO = "http://localhost:6941";
 
 export function normalizarYoloUrl(v?: string): string {
-  const u = (v ?? "").trim().replace(/\/+$/, "").replace(/\/(detect|health|cameras\/config)$/, "");
+  const u = (v ?? "").trim().replace(/\/+$/, "").replace(/\/(detections|detect|health|cameras\/config)$/, "");
   return u || YOLO_API_URL_PADRAO;
 }
 

@@ -138,7 +138,7 @@ O evento deve aparecer na página **Detecções IA** na hora.
 
 ## 6. Servidor YOLO local (padrão http://localhost:6941, configurável por VITE_YOLO_API_URL)
 
-O app envia ~5 frames/s para `POST {VITE_YOLO_API_URL ou http://localhost:6941}/detect` (campo `file`, JPEG 640px) e mostra a
+O app envia ~5 frames/s para `POST {VITE_YOLO_API_URL ou http://localhost:6941}/detections` (campo `file`, JPEG 640px) e mostra a
 imagem JPEG retornada com as caixas desenhadas. Para que o app crie **ocorrências
 automáticas**, o servidor deve devolver os EPIs nos cabeçalhos da resposta:
 
