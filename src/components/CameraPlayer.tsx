@@ -236,13 +236,13 @@ export const CameraPlayer = ({
         if (camIdRef.current) fd.append("camera_id", camIdRef.current);
         if (cfg?.ok) fd.append("required_epis", JSON.stringify(cfg.required_epis));
 
-        const r = await fetch(`${YOLO_API_URL}/detect`, {
+        const r = await fetch(`${YOLO_API_URL}/detections`, {
           method: "POST",
           body: fd,
           signal: ac.signal,
         });
         if (!r.ok) {
-          if (vivo) setConexao("modelo_indisponivel", `${MSG_SEM_MODELO} (/detect respondeu HTTP ${r.status})`);
+          if (vivo) setConexao("modelo_indisponivel", `${MSG_SEM_MODELO} (/detections respondeu HTTP ${r.status})`);
           return;
         }
 
