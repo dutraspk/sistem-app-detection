@@ -242,7 +242,7 @@ export const CameraPlayer = ({
           signal: ac.signal,
         });
         if (!r.ok) {
-          if (vivo) setConexao("modelo_indisponivel", `${MSG_SEM_MODELO} (/detect respondeu HTTP ${r.status})`);
+          if (vivo) setConexao("modelo_indisponivel", `${MSG_SEM_MODELO} (/detections respondeu HTTP ${r.status})`);
           return;
         }
 

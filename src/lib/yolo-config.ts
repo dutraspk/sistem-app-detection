@@ -1,4 +1,4 @@
-// URL base do servidor YOLO, usada por /health, /detect e /cameras/config.
+// URL base do servidor YOLO, usada por /health, /detections e /cameras/config.
 // Defina VITE_YOLO_API_URL para outro endereço (ex.: Tailscale). Padrão: servidor local.
 export const YOLO_API_URL_PADRAO = "http://localhost:6941";
 
